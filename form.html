@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>GA Forms — Inspection</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="js/data.js"></script>
+<script src="js/ui.js"></script>
+<style>
+  :root {
+    --bg: #060A14;
+    --surface: #0D1421;
+    --surface2: #111827;
+    --border: #1A2333;
+    --border2: #243044;
+    --text: #E8EDF5;
+    --muted: #6B7A99;
+    --accent: #00C896;
+    --accent2: #FF6B35;
+    --accent3: #7B61FF;
+    --danger: #FF4757;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; min-height: 100vh; }
+  
+  /* HEADER */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 20px;
+    position: sticky; top: 0; z-index: 50;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .header-back { background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; padding: 4px; }
+  .header-info { flex: 1; min-width: 0; }
+  .header-title { font-size: 16px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .header-sub { font-size: 11px; color: var(--muted); font-family: 'Space Mono', monospace; }
+  .header-badge { font-family: 'Space Mono', monospace; font-size: 13px; font-weight: 700; padding: 6px 12px; border-radius: 20px; white-space: nowrap; }
+
+  /* PROGRESS */
+  .progress-bar { height: 4px; background: var(--border); position: sticky; top: 65px; z-index: 49; }
+  .progress-fill { height: 100%; background: var(--accent); transition: width 0.4s ease; }
+
+  /* PLANT SELECTOR */
+  .plant-selector { padding: 20px; }
+  .selector-title { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+  .selector-sub { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+  .plant-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+  .plant-option {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px; display: flex; align-items: center; gap: 14px;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .plant-option:hover, .plant-option.selected { border-color: var(--accent); background: rgba(0,200,150,0.05); }
+  .plant-option .po-emoji { font-size: 28px; }
+  .plant-option .po-name { font-size: 15px; font-weight: 700; }
+  .plant-option .po-loc { font-size: 12px; color: var(--muted); }
+  .plant-option .po-check { margin-left: auto; font-size: 20px; opacity: 0; transition: opacity 0.2s; }
+  .plant-option.selected .po-check { opacity: 1; color: var(--accent); }
+
+  /* FORM SELECTOR */
+  .form-options { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+  .form-option {
+    background: var(--surface); border: 2px solid var(--border); border-radius: 14px;
+    padding: 18px; cursor: pointer; transition: all 0.2s;
+  }
+  .form-option:hover, .form-option.selected { transform: translateX(4px); }
+  .form-option-id { font-family: 'Space Mono', monospace; font-size: 20px; font-weight: 700; }
+  .form-option-name { font-size: 15px; font-weight: 700; margin: 4px 0; }
+  .form-option-desc { font-size: 12px; color: var(--muted); }
+  .form-meta { display: flex; gap: 12px; margin-top: 10px; font-size: 11px; color: var(--muted); font-family: 'Space Mono', monospace; }
+
+  /* OPERATOR SECTION */
+  .op-section { padding: 0 20px 20px; }
+  .section-heading { font-size: 18px; font-weight: 800; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+  .form-group { margin-bottom: 16px; }
+  .form-label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 6px; letter-spacing: 1.5px; font-family: 'Space Mono', monospace; }
+  .form-input {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 12px; padding: 14px 16px; color: var(--text);
+    font-family: 'Syne', sans-serif; font-size: 15px;
+    transition: border-color 0.2s; -webkit-appearance: none;
+  }
+  .form-input:focus { outline: none; border-color: var(--accent); }
+  .form-input::placeholder { color: var(--muted); }
+  textarea.form-input { resize: none; min-height: 80px; }
+
+  /* CHECKLIST SECTION */
+  .checklist-section { padding: 0 20px; margin-bottom: 24px; }
+  .section-title {
+    font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 10px; display: flex; align-items: center; gap: 8px;
+  }
+  .section-progress { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--muted); margin-left: auto; }
+  
+  .check-item {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    margin-bottom: 8px; overflow: hidden; transition: all 0.2s;
+    cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent;
+  }
+  .check-item.checked { border-color: rgba(0,200,150,0.4); background: rgba(0,200,150,0.05); }
+  .check-item.failed { border-color: rgba(255,71,87,0.4); background: rgba(255,71,87,0.05); }
+  .check-item-inner { display: flex; align-items: flex-start; gap: 14px; padding: 14px 16px; }
+  .check-box {
+    width: 26px; height: 26px; border-radius: 8px; border: 2px solid var(--border2);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    margin-top: 1px; transition: all 0.2s; font-size: 14px;
+  }
+  .check-item.checked .check-box { background: var(--accent); border-color: var(--accent); }
+  .check-item.failed .check-box { background: var(--danger); border-color: var(--danger); }
+  .check-item.na .check-box { background: var(--muted); border-color: var(--muted); }
+  .check-label { font-size: 14px; line-height: 1.4; flex: 1; padding-top: 3px; }
+  
+  /* Status toggle buttons inside item */
+  .check-actions { display: flex; gap: 6px; padding: 0 16px 10px 56px; }
+  .check-btn {
+    font-size: 11px; font-family: 'Space Mono', monospace; font-weight: 700;
+    padding: 5px 12px; border-radius: 6px; border: none; cursor: pointer;
+    transition: all 0.15s; letter-spacing: 0.5px;
+  }
+  .check-btn.pass { background: rgba(0,200,150,0.15); color: var(--accent); }
+  .check-btn.pass.active { background: var(--accent); color: #060A14; }
+  .check-btn.fail-btn { background: rgba(255,71,87,0.15); color: var(--danger); }
+  .check-btn.fail-btn.active { background: var(--danger); color: white; }
+  .check-btn.na-btn { background: rgba(107,122,153,0.15); color: var(--muted); }
+  .check-btn.na-btn.active { background: var(--muted); color: var(--bg); }
+
+  /* SUMMARY */
+  .summary-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 20px; margin: 0 20px 20px;
+  }
+  .summary-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .summary-row:last-child { border-bottom: none; }
+  .score-big { font-family: 'Space Mono', monospace; font-size: 48px; font-weight: 700; text-align: center; padding: 20px 0; }
+
+  /* STICKY FOOTER */
+  .sticky-footer {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: rgba(6,10,20,0.95); backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border);
+    padding: 16px 20px;
+    display: flex; gap: 12px; z-index: 100;
+  }
+  .btn-full { width: 100%; font-family: 'Space Mono', monospace; font-size: 14px; font-weight: 700; padding: 16px; border-radius: 12px; border: none; cursor: pointer; transition: all 0.2s; letter-spacing: 0.5px; }
+  .btn-primary { background: var(--accent); color: #060A14; }
+  .btn-primary:hover:not(:disabled) { background: #00e8ad; }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-secondary2 { background: var(--surface2); color: var(--muted); border: 1px solid var(--border2); }
+
+  /* SUCCESS SCREEN */
+  .success-screen { padding: 40px 20px; text-align: center; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .success-icon { font-size: 72px; margin-bottom: 20px; animation: bounce 0.6s ease; }
+  @keyframes bounce { 0%{transform:scale(0);} 60%{transform:scale(1.2);} 100%{transform:scale(1);} }
+  .success-title { font-size: 28px; font-weight: 800; margin-bottom: 8px; }
+  .success-sub { font-size: 14px; color: var(--muted); margin-bottom: 32px; }
+  .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 400px; margin-bottom: 32px; }
+  .result-item { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; text-align: center; }
+  .result-value { font-family: 'Space Mono', monospace; font-size: 24px; font-weight: 700; }
+  .result-label { font-size: 11px; color: var(--muted); margin-top: 4px; letter-spacing: 1px; }
+
+  /* STEP INDICATOR */
+  .steps { display: flex; align-items: center; gap: 0; margin: 20px 20px 0; }
+  .step { flex: 1; text-align: center; position: relative; }
+  .step-dot { width: 28px; height: 28px; border-radius: 50%; background: var(--border2); border: 2px solid var(--border2); display: flex; align-items: center; justify-content: center; margin: 0 auto 4px; font-size: 12px; font-family: 'Space Mono', monospace; font-weight: 700; color: var(--muted); transition: all 0.3s; }
+  .step.done .step-dot { background: var(--accent); border-color: var(--accent); color: #060A14; }
+  .step.active .step-dot { background: transparent; border-color: var(--accent); color: var(--accent); }
+  .step-label { font-size: 10px; color: var(--muted); letter-spacing: 1px; font-family: 'Space Mono', monospace; }
+  .step.active .step-label, .step.done .step-label { color: var(--text); }
+  .step-line { position: absolute; top: 13px; left: 50%; right: -50%; height: 2px; background: var(--border); z-index: -1; }
+  .step.done .step-line { background: var(--accent); }
+  .step:last-child .step-line { display: none; }
+
+  /* Quick all-tick */
+  .quick-all { font-size: 12px; font-family: 'Space Mono', monospace; color: var(--accent); background: none; border: 1px solid rgba(0,200,150,0.3); border-radius: 6px; padding: 4px 10px; cursor: pointer; float: right; }
+
+  .pb { padding-bottom: 90px; }
+</style>
+</head>
+<body>
+
+<!-- STEP: SELECT PLANT & FORM -->
+<div id="screen-select">
+  <div class="header">
+    <div class="header-info">
+      <div class="header-title">🛡️ GA Inspection System</div>
+      <div class="header-sub">Select plant and form type</div>
+    </div>
+  </div>
+
+  <div id="steps-indicator"></div>
+
+  <div id="select-content" style="padding-bottom:100px;">
+    <!-- Plant selector -->
+    <div id="plant-step" style="padding:20px;">
+      <div class="selector-title">Select Plant</div>
+      <div class="selector-sub">Which piece of plant are you inspecting?</div>
+      <div id="plant-list" class="plant-list"></div>
+    </div>
+
+    <!-- Form selector (shown after plant selected) -->
+    <div id="form-step" style="padding:0 20px;display:none;">
+      <div class="selector-title">Select Form</div>
+      <div class="selector-sub">Which inspection form do you need to fill?</div>
+      <div id="form-options" class="form-options"></div>
+    </div>
+  </div>
+
+  <div class="sticky-footer">
+    <button class="btn-full btn-secondary2" id="btn-back-select" onclick="goBackSelect()" style="display:none;">← Back</button>
+    <button class="btn-full btn-primary" id="btn-next-select" onclick="nextSelect()" disabled>Next →</button>
+  </div>
+</div>
+
+<!-- STEP: OPERATOR INFO -->
+<div id="screen-operator" style="display:none;">
+  <div class="header">
+    <button class="header-back" onclick="showScreen('select')">←</button>
+    <div class="header-info">
+      <div class="header-title" id="op-plant-name">Plant Name</div>
+      <div class="header-sub" id="op-form-name">Form Name</div>
+    </div>
+    <span class="header-badge" id="op-badge" style="background:rgba(0,200,150,0.1);color:var(--accent);">GA2</span>
+  </div>
+
+  <div class="op-section" style="padding-top:20px;padding-bottom:100px;">
+    <div class="section-heading">Your Details</div>
+    <div class="form-group">
+      <label class="form-label">FULL NAME *</label>
+      <input type="text" class="form-input" id="op-name" placeholder="John Smith" autocomplete="name">
+    </div>
+    <div class="form-group">
+      <label class="form-label">COMPANY *</label>
+      <input type="text" class="form-input" id="op-company" placeholder="Your company name" autocomplete="organization">
+    </div>
+    <div class="form-group">
+      <label class="form-label">DATE</label>
+      <input type="date" class="form-input" id="op-date">
+    </div>
+    <div class="form-group">
+      <label class="form-label">LICENCE / TICKET NUMBER (if applicable)</label>
+      <input type="text" class="form-input" id="op-licence" placeholder="e.g. WP12345" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label class="form-label">ADDITIONAL NOTES</label>
+      <textarea class="form-input" id="op-notes" placeholder="Any defects, concerns or observations..."></textarea>
+    </div>
+  </div>
+
+  <div class="sticky-footer">
+    <button class="btn-full btn-secondary2" onclick="showScreen('select')" style="max-width:100px;">← Back</button>
+    <button class="btn-full btn-primary" onclick="startChecklist()">Start Inspection →</button>
+  </div>
+</div>
+
+<!-- STEP: CHECKLIST -->
+<div id="screen-checklist" style="display:none;">
+  <div class="header">
+    <button class="header-back" onclick="showScreen('operator')">←</button>
+    <div class="header-info">
+      <div class="header-title" id="cl-plant-name">Plant</div>
+      <div class="header-sub" id="cl-progress-text">0 / 0 checked</div>
+    </div>
+    <span class="header-badge" id="cl-score-badge" style="background:rgba(0,200,150,0.1);color:var(--accent);">0%</span>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="cl-progress-fill" style="width:0%"></div></div>
+  
+  <div id="checklist-content" class="pb"></div>
+
+  <div class="sticky-footer">
+    <button class="btn-full btn-secondary2" onclick="showScreen('operator')" style="max-width:100px;">← Back</button>
+    <button class="btn-full btn-primary" id="btn-submit" onclick="submitForm()">Submit ✓</button>
+  </div>
+</div>
+
+<!-- SUCCESS SCREEN -->
+<div id="screen-success" style="display:none;">
+  <div class="success-screen">
+    <div class="success-icon" id="success-icon">✅</div>
+    <div class="success-title" id="success-title">Inspection Complete!</div>
+    <div class="success-sub" id="success-sub">Submission recorded successfully</div>
+    
+    <div class="result-grid" id="result-grid"></div>
+
+    <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:400px;">
+      <button class="btn-full btn-primary" onclick="startNew()">📋 New Inspection</button>
+      <button class="btn-full btn-secondary2" onclick="window.close()">Close</button>
+    </div>
+
+    <div style="margin-top:24px;font-size:12px;color:var(--muted);font-family:'Space Mono',monospace;">
+      Form submitted · <span id="success-time"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+// State
+let state = {
+  plantId: null,
+  formId: null,
+  plant: null,
+  template: null,
+  answers: [], // 0=unchecked, 1=pass, 2=fail, 3=na
+  step: 'plant' // plant | form
+};
+
+// URL Params
+const params = new URLSearchParams(window.location.search);
+const urlPlant = params.get('plant');
+const urlForm = params.get('form');
+
+// ============================================================
+// SCREEN MANAGEMENT
+// ============================================================
+function showScreen(name) {
+  ['select','operator','checklist','success'].forEach(s => {
+    document.getElementById('screen-' + s).style.display = s === name ? '' : 'none';
+  });
+}
+
+// ============================================================
+// PLANT & FORM SELECTION
+// ============================================================
+function renderPlantList() {
+  const plants = DB.getPlants();
+  const list = document.getElementById('plant-list');
+  list.innerHTML = plants.map(p => `
+    <div class="plant-option ${state.plantId === p.id ? 'selected' : ''}" onclick="selectPlant('${p.id}')">
+      <span class="po-emoji">${p.photo || '🏗️'}</span>
+      <div style="flex:1;">
+        <div class="po-name">${p.name}</div>
+        <div class="po-loc">📍 ${p.location} · <span style="font-family:'Space Mono',monospace;font-size:11px;">${p.id}</span></div>
+      </div>
+      <span class="po-check">✓</span>
+    </div>`).join('');
+}
+
+function selectPlant(id) {
+  state.plantId = id;
+  state.plant = DB.getPlant(id);
+  renderPlantList();
+  state.step = 'form';
+  document.getElementById('plant-step').style.display = 'none';
+  document.getElementById('form-step').style.display = '';
+  document.getElementById('btn-back-select').style.display = '';
+  renderFormOptions();
+}
+
+function renderFormOptions() {
+  const templates = DB.getFormTemplates();
+  const opts = document.getElementById('form-options');
+  const colors = { GA2: '#00C896', GA3: '#FF6B35', GA4: '#7B61FF' };
+  opts.innerHTML = templates.map(t => {
+    const totalItems = t.sections.reduce((sum, s) => sum + s.items.length, 0);
+    return `<div class="form-option ${state.formId === t.id ? 'selected' : ''}" 
+                 style="border-color:${state.formId === t.id ? colors[t.id]||'var(--accent)' : 'var(--border)'};"
+                 onclick="selectForm('${t.id}')">
+      <div class="form-option-id" style="color:${colors[t.id]||'var(--accent)'};">${t.id}</div>
+      <div class="form-option-name">${t.name}</div>
+      <div class="form-option-desc">${t.description}</div>
+      <div class="form-meta">
+        <span>📋 ${t.sections.length} sections</span>
+        <span>✓ ${totalItems} checkpoints</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function selectForm(id) {
+  state.formId = id;
+  state.template = DB.getFormTemplate(id);
+  renderFormOptions();
+  document.getElementById('btn-next-select').disabled = false;
+}
+
+function nextSelect() {
+  if (!state.plantId || !state.formId) return;
+  // Set operator details
+  document.getElementById('op-plant-name').textContent = state.plant.photo + ' ' + state.plant.name;
+  document.getElementById('op-form-name').textContent = state.template.name;
+  document.getElementById('op-badge').textContent = state.formId;
+  document.getElementById('op-badge').style.color = 'var(--accent)';
+  
+  // Set today's date
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('op-date').value = today;
+  
+  // Load saved operator name from settings
+  const settings = DB.getSettings();
+  
+  showScreen('operator');
+}
+
+function goBackSelect() {
+  state.step = 'plant';
+  state.formId = null;
+  document.getElementById('plant-step').style.display = '';
+  document.getElementById('form-step').style.display = 'none';
+  document.getElementById('btn-back-select').style.display = 'none';
+  document.getElementById('btn-next-select').disabled = true;
+}
+
+// ============================================================
+// CHECKLIST
+// ============================================================
+function startChecklist() {
+  const name = document.getElementById('op-name').value.trim();
+  const company = document.getElementById('op-company').value.trim();
+  if (!name) { UI.toast('Please enter your name', 'error'); return; }
+  if (!company) { UI.toast('Please enter your company', 'error'); return; }
+  
+  // Init answers
+  const totalItems = state.template.sections.reduce((sum, s) => sum + s.items.length, 0);
+  state.answers = new Array(totalItems).fill(0);
+  
+  renderChecklist();
+  showScreen('checklist');
+  updateProgress();
+}
+
+function renderChecklist() {
+  document.getElementById('cl-plant-name').textContent = state.plant.name;
+  const content = document.getElementById('checklist-content');
+  let html = '';
+  let idx = 0;
+  
+  state.template.sections.forEach((sec, si) => {
+    html += `<div class="checklist-section" style="margin-top:${si===0?'20px':'0'};">
+      <div class="section-title">
+        <span>${si+1}. ${sec.title}</span>
+        <button class="quick-all" onclick="tickAll(${idx}, ${idx + sec.items.length - 1})">✓ All Pass</button>
+        <span class="section-progress" id="sec-prog-${si}">0/${sec.items.length}</span>
+      </div>`;
+    
+    sec.items.forEach((item, ii) => {
+      const itemIdx = idx + ii;
+      html += `<div class="check-item" id="item-${itemIdx}" onclick="toggleItem(${itemIdx})">
+        <div class="check-item-inner">
+          <div class="check-box" id="box-${itemIdx}"></div>
+          <div class="check-label">${item}</div>
+        </div>
+        <div class="check-actions" id="actions-${itemIdx}" style="display:none;">
+          <button class="check-btn pass" onclick="event.stopPropagation();setItemStatus(${itemIdx},1)">✓ PASS</button>
+          <button class="check-btn fail-btn" onclick="event.stopPropagation();setItemStatus(${itemIdx},2)">✕ FAIL</button>
+          <button class="check-btn na-btn" onclick="event.stopPropagation();setItemStatus(${itemIdx},3)">N/A</button>
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+    idx += sec.items.length;
+  });
+  
+  content.innerHTML = html;
+}
+
+let openItem = null;
+function toggleItem(idx) {
+  if (openItem !== null && openItem !== idx) {
+    document.getElementById('actions-' + openItem).style.display = 'none';
+  }
+  const actions = document.getElementById('actions-' + idx);
+  const isOpen = actions.style.display !== 'none';
+  actions.style.display = isOpen ? 'none' : '';
+  openItem = isOpen ? null : idx;
+  
+  // If unchecked, quick-pass on first tap
+  if (!isOpen && state.answers[idx] === 0) {
+    setItemStatus(idx, 1);
+  }
+}
+
+function setItemStatus(idx, status) {
+  state.answers[idx] = status;
+  const item = document.getElementById('item-' + idx);
+  const box = document.getElementById('box-' + idx);
+  item.className = 'check-item' + (status === 1 ? ' checked' : status === 2 ? ' failed' : status === 3 ? ' na' : '');
+  box.textContent = status === 1 ? '✓' : status === 2 ? '✕' : status === 3 ? '—' : '';
+  updateProgress();
+}
+
+function tickAll(from, to) {
+  for (let i = from; i <= to; i++) setItemStatus(i, 1);
+}
+
+function updateProgress() {
+  const total = state.answers.length;
+  const answered = state.answers.filter(a => a > 0).length;
+  const passed = state.answers.filter(a => a === 1 || a === 3).length;
+  const pct = total > 0 ? Math.round((passed / total) * 100) : 0;
+  
+  document.getElementById('cl-progress-text').textContent = `${answered} / ${total} answered`;
+  document.getElementById('cl-progress-fill').style.width = `${(answered/total)*100}%`;
+  
+  const color = pct >= 80 ? '#00C896' : pct >= 60 ? '#FF6B35' : '#FF4757';
+  const badge = document.getElementById('cl-score-badge');
+  badge.textContent = pct + '%';
+  badge.style.color = color;
+  badge.style.background = color + '22';
+  
+  // Update section progress
+  let idx = 0;
+  state.template.sections.forEach((sec, si) => {
+    const secAnswered = state.answers.slice(idx, idx + sec.items.length).filter(a => a > 0).length;
+    const el = document.getElementById('sec-prog-' + si);
+    if (el) el.textContent = `${secAnswered}/${sec.items.length}`;
+    idx += sec.items.length;
+  });
+}
+
+// ============================================================
+// SUBMIT
+// ============================================================
+function submitForm() {
+  const name = document.getElementById('op-name').value.trim();
+  const company = document.getElementById('op-company').value.trim();
+  const notes = document.getElementById('op-notes').value.trim();
+  const date = document.getElementById('op-date').value;
+  const licence = document.getElementById('op-licence').value.trim();
+  
+  const total = state.answers.length;
+  const passed = state.answers.filter(a => a === 1 || a === 3).length;
+  const failed = state.answers.filter(a => a === 2).length;
+  const unanswered = state.answers.filter(a => a === 0).length;
+  const score = Math.round((passed / total) * 100);
+  
+  // Warn if items unanswered
+  if (unanswered > 0) {
+    if (!confirm(`${unanswered} item(s) are unanswered. Submit anyway?`)) return;
+  }
+  
+  const sub = DB.addSubmission({
+    plantId: state.plantId,
+    formId: state.formId,
+    operatorName: name,
+    companyName: company,
+    date: date,
+    licence: licence,
+    notes: notes,
+    answers: state.answers,
+    total: total,
+    passed: passed,
+    failed: failed,
+  });
+  
+  // Add notification
+  if (failed > 0) {
+    DB.addNotification({
+      title: `⚠️ Defects Found — ${state.plant.name}`,
+      message: `${name} reported ${failed} failed item(s) on ${state.formId} inspection. Review required.`,
+      type: 'warning'
+    });
+  } else {
+    DB.addNotification({
+      title: `✅ ${state.formId} Completed — ${state.plant.name}`,
+      message: `${name} completed inspection with ${score}% score.`,
+      type: 'success'
+    });
+  }
+  
+  // Show success
+  const color = score >= 80 ? '#00C896' : score >= 60 ? '#FF6B35' : '#FF4757';
+  const icon = score === 100 ? '🎉' : score >= 80 ? '✅' : score >= 60 ? '⚠️' : '🚨';
+  document.getElementById('success-icon').textContent = icon;
+  document.getElementById('success-title').textContent = score === 100 ? 'Perfect Score!' : score >= 80 ? 'Inspection Complete!' : score >= 60 ? 'Completed with Defects' : 'Inspection Failed';
+  document.getElementById('success-sub').textContent = `${state.formId} submitted for ${state.plant.name}`;
+  document.getElementById('success-time').textContent = new Date().toLocaleTimeString('en-GB');
+  
+  document.getElementById('result-grid').innerHTML = `
+    <div class="result-item" style="grid-column:1/-1;">
+      <div class="result-value" style="color:${color};font-size:48px;">${score}%</div>
+      <div class="result-label">OVERALL SCORE</div>
+    </div>
+    <div class="result-item">
+      <div class="result-value" style="color:#00C896;">${passed}</div>
+      <div class="result-label">PASSED</div>
+    </div>
+    <div class="result-item">
+      <div class="result-value" style="color:${failed>0?'#FF4757':'var(--muted)'};">${failed}</div>
+      <div class="result-label">FAILED</div>
+    </div>
+    <div class="result-item">
+      <div class="result-value">${total}</div>
+      <div class="result-label">TOTAL ITEMS</div>
+    </div>
+    <div class="result-item">
+      <div class="result-value" style="font-size:16px;">${name.split(' ')[0]}</div>
+      <div class="result-label">OPERATOR</div>
+    </div>
+  `;
+  
+  showScreen('success');
+}
+
+function startNew() {
+  state = { plantId: null, formId: null, plant: null, template: null, answers: [], step: 'plant' };
+  goBackSelect();
+  document.getElementById('plant-step').style.display = '';
+  document.getElementById('btn-back-select').style.display = 'none';
+  document.getElementById('btn-next-select').disabled = true;
+  showScreen('select');
+  renderPlantList();
+}
+
+// ============================================================
+// INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  DB.getPlants();
+  DB.getFormTemplates();
+  renderPlantList();
+  
+  // Handle URL params - pre-select plant/form
+  if (urlPlant) {
+    state.plantId = urlPlant;
+    state.plant = DB.getPlant(urlPlant);
+    if (state.plant) {
+      state.step = 'form';
+      document.getElementById('plant-step').style.display = 'none';
+      document.getElementById('form-step').style.display = '';
+      document.getElementById('btn-back-select').style.display = '';
+      renderFormOptions();
+      if (urlForm) {
+        selectForm(urlForm);
+      }
+    }
+  }
+});
+</script>
+</body>
+</html>
