@@ -610,7 +610,9 @@ function startNew() {
 document.addEventListener('DOMContentLoaded', () => {
   // Auth guard - operators and above can fill forms
   if (!AUTH.isLoggedIn()) {
-    window.location.href = 'login.html';
+    // Preserve the full URL so login can redirect back with plant param intact
+    const returnUrl = encodeURIComponent(window.location.href);
+    window.location.href = 'login.html?return=' + returnUrl;
     return;
   }
   // Pre-fill operator name from session

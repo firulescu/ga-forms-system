@@ -464,7 +464,7 @@ function closeModalOutside(e) { if (e.target.id === 'modal') closeModal(); }
 // INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
-  if (!AUTH.isLoggedIn()) { window.location.href = 'login.html'; return; }
+  if (!AUTH.isLoggedIn()) { window.location.href = 'login.html?return=' + encodeURIComponent(window.location.href); return; }
   const role = AUTH.getRole();
   const session = AUTH.getSession();
   canEdit = ['admin','site_manager','safety_officer'].includes(role);
