@@ -420,8 +420,11 @@ document.addEventListener('keydown', e => {
 // ============================================================
 // Init
 // ============================================================
+// params must be top-level so submitPin() can access it
+const params = new URLSearchParams(window.location.search);
+
 document.addEventListener('DOMContentLoaded', () => {
-  DB.getPlants(); // ensure seeded
+  DB.getPlants();
   DB.getFormTemplates();
 
   // If already logged in, redirect
@@ -430,13 +433,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (role === 'operator') window.location.href = 'form.html';
     else window.location.href = 'index.html';
     return;
-  }
-
-  // Check for redirect from protected page
-  const params = new URLSearchParams(window.location.search);
-  const from = params.get('from');
-  if (from) {
-    // Could show a message here
   }
 
   renderRoles();
