@@ -435,7 +435,15 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  renderRoles();
+  // If coming from a QR code scan (?plant= in the return URL), skip role
+  // selection and go straight to Operator PIN — only operators scan QR codes
+  const returnUrl = params.get('return') || '';
+  const isQRScan  = returnUrl.includes('plant=') || window.location.search.includes('plant=');
+  if (isQRScan) {
+    selectRole('operator');
+  } else {
+    renderRoles();
+  }
 });
 </script>
 </body>
