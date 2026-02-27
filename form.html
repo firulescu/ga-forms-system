@@ -272,7 +272,42 @@
 
   <div class="sticky-footer">
     <button class="btn-full btn-secondary2" onclick="showScreen('operator')" style="max-width:100px;">← Back</button>
-    <button class="btn-full btn-primary" id="btn-submit" onclick="submitForm()">Submit ✓</button>
+    <button class="btn-full btn-primary" id="btn-submit" onclick="goToSignature()">Review & Sign →</button>
+  </div>
+</div>
+
+<!-- STEP: SIGNATURE -->
+<div id="screen-signature" style="display:none;">
+  <div class="header">
+    <button class="header-back" onclick="showScreen('checklist')">←</button>
+    <div class="header-info">
+      <div class="header-title" id="sig-plant-name">Plant</div>
+      <div class="header-sub">Sign to submit</div>
+    </div>
+    <span class="header-badge" id="sig-badge" style="background:rgba(46,125,82,0.1);color:var(--accent);">SIGN</span>
+  </div>
+  <div class="sig-wrap">
+    <div class="sig-title">Operator Signature</div>
+    <div class="sig-sub">Draw your signature below to confirm this inspection is accurate and complete.</div>
+    <div class="sig-canvas-wrap" id="sig-wrap">
+      <canvas id="sig-canvas" height="200"></canvas>
+      <div class="sig-placeholder" id="sig-placeholder">
+        <span>✍️</span>Sign here
+      </div>
+    </div>
+    <div class="sig-actions">
+      <button class="sig-clear" onclick="clearSig()">Clear ↺</button>
+    </div>
+    <div class="declaration">
+      <strong>Declaration:</strong> I confirm that this inspection has been carried out by me personally,
+      that all items marked PASS were found to be in a safe and satisfactory condition, and that all
+      items marked FAIL have been reported to my supervisor. The information recorded is true and accurate
+      to the best of my knowledge.
+    </div>
+  </div>
+  <div class="sticky-footer">
+    <button class="btn-full btn-secondary2" onclick="showScreen('checklist')" style="max-width:100px;">← Back</button>
+    <button class="btn-full btn-primary" id="btn-submit-sig" onclick="submitForm()">Submit & Sign ✓</button>
   </div>
 </div>
 
@@ -494,7 +529,7 @@ function updateProgress() {
   document.getElementById('cl-progress-text').textContent = `${answered} / ${total} answered`;
   document.getElementById('cl-progress-fill').style.width = `${(answered/total)*100}%`;
   
-  const color = pct >= 80 ? '#00C896' : pct >= 60 ? '#FF6B35' : '#FF4757';
+  const color = pct === 100 ? '#00C896' : pct >= 90 ? '#FF6B35' : '#FF4757';
   const badge = document.getElementById('cl-score-badge');
   badge.textContent = pct + '%';
   badge.style.color = color;
@@ -511,9 +546,67 @@ function updateProgress() {
 }
 
 // ============================================================
+// SIGNATURE PAD
+// ============================================================
+let sigCanvas, sigCtx, sigDrawing = false, sigHasData = false;
+
+function initSig() {
+  sigCanvas = document.getElementById('sig-canvas');
+  sigCtx    = sigCanvas.getContext('2d');
+  // Set canvas pixel size to match display size
+  const rect = sigCanvas.parentElement.getBoundingClientRect();
+  sigCanvas.width  = rect.width || 340;
+  sigCanvas.height = 200;
+  sigCtx.strokeStyle = '#E8EDF5';
+  sigCtx.lineWidth   = 2.5;
+  sigCtx.lineCap     = 'round';
+  sigCtx.lineJoin    = 'round';
+
+  function getPos(e) {
+    const r = sigCanvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: (src.clientX - r.left) * (sigCanvas.width / r.width),
+             y: (src.clientY - r.top)  * (sigCanvas.height / r.height) };
+  }
+  sigCanvas.addEventListener('mousedown',  e => { sigDrawing=true; const p=getPos(e); sigCtx.beginPath(); sigCtx.moveTo(p.x,p.y); });
+  sigCanvas.addEventListener('mousemove',  e => { if(!sigDrawing) return; const p=getPos(e); sigCtx.lineTo(p.x,p.y); sigCtx.stroke(); sigHasData=true; document.getElementById('sig-placeholder').style.opacity='0'; });
+  sigCanvas.addEventListener('mouseup',    () => sigDrawing=false);
+  sigCanvas.addEventListener('mouseleave', () => sigDrawing=false);
+  sigCanvas.addEventListener('touchstart', e => { e.preventDefault(); sigDrawing=true; const p=getPos(e); sigCtx.beginPath(); sigCtx.moveTo(p.x,p.y); }, {passive:false});
+  sigCanvas.addEventListener('touchmove',  e => { e.preventDefault(); if(!sigDrawing) return; const p=getPos(e); sigCtx.lineTo(p.x,p.y); sigCtx.stroke(); sigHasData=true; document.getElementById('sig-placeholder').style.opacity='0'; }, {passive:false});
+  sigCanvas.addEventListener('touchend',   () => sigDrawing=false);
+}
+
+function clearSig() {
+  if (!sigCanvas) return;
+  sigCtx.clearRect(0, 0, sigCanvas.width, sigCanvas.height);
+  sigHasData = false;
+  document.getElementById('sig-placeholder').style.opacity = '1';
+}
+
+function getSigData() {
+  if (!sigCanvas || !sigHasData) return null;
+  return sigCanvas.toDataURL('image/png');
+}
+
+function goToSignature() {
+  const total     = state.answers.length;
+  const unanswered = state.answers.filter(a => a === 0).length;
+  if (unanswered > 0) {
+    if (!confirm(unanswered + ' item(s) are unanswered. Continue to signature anyway?')) return;
+  }
+  document.getElementById('sig-plant-name').textContent = state.plant?.name || '';
+  const badge = document.getElementById('sig-badge');
+  if (badge) badge.textContent = state.formId;
+  showScreen('signature');
+  setTimeout(initSig, 100); // wait for display:block
+}
+
+// ============================================================
 // SUBMIT
 // ============================================================
 function submitForm() {
+  const sigData = getSigData();
   const name = document.getElementById('op-name').value.trim();
   const company = document.getElementById('op-company').value.trim();
   const notes = document.getElementById('op-notes').value.trim();
@@ -526,10 +619,6 @@ function submitForm() {
   const unanswered = state.answers.filter(a => a === 0).length;
   const score = Math.round((passed / total) * 100);
   
-  // Warn if items unanswered
-  if (unanswered > 0) {
-    if (!confirm(`${unanswered} item(s) are unanswered. Submit anyway?`)) return;
-  }
   
   const sub = DB.addSubmission({
     plantId: state.plantId,
@@ -543,13 +632,34 @@ function submitForm() {
     total: total,
     passed: passed,
     failed: failed,
+    signature: sigData,
   });
   
+  // Auto-log each FAIL as a defect in the defect tracker
+  if (failed > 0) {
+    const template = DB.getFormTemplate(state.formId);
+    let idx = 0;
+    (template?.sections || []).forEach(sec => {
+      sec.items.forEach(item => {
+        if (state.answers[idx] === 2) {
+          DB.addDefect({
+            plantId: state.plantId,
+            formId:  state.formId,
+            operatorName: name,
+            item:    item,
+            section: sec.title,
+          });
+        }
+        idx++;
+      });
+    });
+  }
+
   // Add notification
   if (failed > 0) {
     DB.addNotification({
       title: `⚠️ Defects Found — ${state.plant.name}`,
-      message: `${name} reported ${failed} failed item(s) on ${state.formId} inspection. Review required.`,
+      message: `${name} reported ${failed} failed item(s) on ${state.formId}. Logged to Defect Tracker.`,
       type: 'warning'
     });
   } else {
@@ -561,10 +671,10 @@ function submitForm() {
   }
   
   // Show success
-  const color = score >= 80 ? '#00C896' : score >= 60 ? '#FF6B35' : '#FF4757';
-  const icon = score === 100 ? '🎉' : score >= 80 ? '✅' : score >= 60 ? '⚠️' : '🚨';
+  const color = score === 100 ? '#00C896' : score >= 90 ? '#FF6B35' : '#FF4757';
+  const icon = score === 100 ? '🎉' : score >= 90 ? '⚠️' : '🚨';
   document.getElementById('success-icon').textContent = icon;
-  document.getElementById('success-title').textContent = score === 100 ? 'Perfect Score!' : score >= 80 ? 'Inspection Complete!' : score >= 60 ? 'Completed with Defects' : 'Inspection Failed';
+  document.getElementById('success-title').textContent = score === 100 ? 'Perfect Score!' : score >= 90 ? 'Completed — Defects Found' : 'Inspection Failed';
   document.getElementById('success-sub').textContent = `${state.formId} submitted for ${state.plant.name}`;
   document.getElementById('success-time').textContent = new Date().toLocaleTimeString('en-GB');
   

@@ -208,12 +208,7 @@
     <div id="step-role">
       <div class="step-label">SELECT YOUR ROLE</div>
       <div class="role-grid" id="role-grid"></div>
-      <div class="pin-notice" id="default-pin-notice">
-        ⚠️ Default PINs are active.<br>
-        Admin: 0000 · Manager: 1111<br>
-        Safety: 2222 · Operator: 3333<br>
-        Change them after first login in Settings.
-      </div>
+      <div id="default-pin-notice" style="display:none;"></div>
     </div>
 
     <!-- STEP 2: Enter Name + PIN -->
@@ -272,6 +267,7 @@ const MAX_PIN = 6; // support up to 6 digit PINs
 
 const roleColors = {
   admin: '#C9A84C',
+  project_manager: '#FF6B35',
   site_manager: '#2E7D52',
   safety_officer: '#3a9e68',
   operator: '#6B7A99',
@@ -283,10 +279,11 @@ const roleColors = {
 function renderRoles() {
   const grid = document.getElementById('role-grid');
   const roles = [
-    { key: 'admin',          icon: '👑', name: 'Admin',          level: 'Full Access' },
-    { key: 'site_manager',   icon: '🏗️', name: 'Site Manager',   level: 'Management' },
-    { key: 'safety_officer', icon: '🛡️', name: 'Safety Officer', level: 'Safety' },
-    { key: 'operator',       icon: '👷', name: 'Operator',       level: 'Field' },
+    { key: 'admin',           icon: '👑', name: 'Admin',           level: 'Full Access' },
+    { key: 'project_manager', icon: '📋', name: 'Project Manager', level: 'Full Access' },
+    { key: 'site_manager',    icon: '🏗️', name: 'Site Manager',    level: 'Management' },
+    { key: 'safety_officer',  icon: '🛡️', name: 'Safety Officer',  level: 'Safety' },
+    { key: 'operator',        icon: '👷', name: 'Operator',        level: 'Field' },
   ];
   grid.innerHTML = roles.map(r => `
     <div class="role-btn" id="role-${r.key}" onclick="selectRole('${r.key}')"
@@ -435,12 +432,21 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  // If coming from a QR code scan (?plant= in the return URL), skip role
-  // selection and go straight to Operator PIN — only operators scan QR codes
+  // If coming from a QR code scan, skip role selection → straight to Operator PIN
   const returnUrl = params.get('return') || '';
-  const isQRScan  = returnUrl.includes('plant=') || window.location.search.includes('plant=');
+  const isQRScan  = returnUrl.includes('plant=') || params.has('plant');
   if (isQRScan) {
-    selectRole('operator');
+    // Show PIN step directly for operator, hide role step
+    selectedRole = 'operator';
+    document.getElementById('step-role').style.display = 'none';
+    document.getElementById('step-pin').style.display = '';
+    document.getElementById('selected-role-label').textContent = 'Operator';
+    // Hide the "← Change role" back link when coming from QR
+    const backLink = document.querySelector('.back-link');
+    if (backLink) backLink.style.display = 'none';
+    updateDots();
+    clearError();
+    document.getElementById('login-name').focus();
   } else {
     renderRoles();
   }

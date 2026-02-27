@@ -285,8 +285,8 @@
           <span style="font-family:Georgia,serif;font-size:22px;font-weight:700;color:white;line-height:1;">Q</span>
         </div>
         <div>
-          <div class="brand-name">ROBERT QUINN</div>
-          <div class="brand-sub">LTD · GA FORMS</div>
+          <div class="brand-name">ROBERT QUINN LTD</div>
+          <div class="brand-sub">GA FORMS SYSTEM</div>
         </div>
       </div>
     </div>
@@ -298,6 +298,10 @@
       <a class="nav-link" data-page="compliance" onclick="showPage('compliance')">
         <span class="icon">✅</span> Compliance
         <span class="nav-badge" id="issues-badge" style="display:none">0</span>
+      </a>
+      <a class="nav-link" data-page="defects" onclick="showPage('defects')">
+        <span class="icon">🔧</span> Defect Tracker
+        <span class="nav-badge" id="defects-badge" style="display:none">0</span>
       </a>
       <div class="nav-section-label">PLANT</div>
       <a class="nav-link" data-page="plants" onclick="showPage('plants')">
@@ -590,6 +594,46 @@
         </div>
       </div>
 
+      <!-- ===== DEFECT TRACKER PAGE ===== -->
+      <div class="page" id="page-defects">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+          <div>
+            <div style="font-size:22px;font-weight:800;">🔧 Defect Tracker</div>
+            <div style="font-size:13px;color:var(--muted);margin-top:2px;">All FAIL items reported across plant inspections</div>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn btn-secondary btn-sm" onclick="filterDefects('all')"     id="df-all">All</button>
+            <button class="btn btn-secondary btn-sm" onclick="filterDefects('open')"    id="df-open">🔴 Open</button>
+            <button class="btn btn-secondary btn-sm" onclick="filterDefects('resolved')" id="df-res">✅ Resolved</button>
+            <button class="btn btn-secondary btn-sm" onclick="printDefectReport()">🖨️ Print</button>
+            <button class="btn btn-secondary btn-sm" onclick="printWeeklySummary()">📊 Weekly Report</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;">
+          <div class="card" style="padding:18px;border-bottom:3px solid var(--danger);">
+            <div style="font-size:22px;margin-bottom:8px;">🚨</div>
+            <div style="font-family:'Space Mono',monospace;font-size:28px;font-weight:700;" id="def-stat-open">0</div>
+            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:4px;">OPEN DEFECTS</div>
+          </div>
+          <div class="card" style="padding:18px;border-bottom:3px solid var(--accent);">
+            <div style="font-size:22px;margin-bottom:8px;">✅</div>
+            <div style="font-family:'Space Mono',monospace;font-size:28px;font-weight:700;" id="def-stat-res">0</div>
+            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:4px;">RESOLVED</div>
+          </div>
+          <div class="card" style="padding:18px;border-bottom:3px solid var(--warning);">
+            <div style="font-size:22px;margin-bottom:8px;">🏗️</div>
+            <div style="font-family:'Space Mono',monospace;font-size:28px;font-weight:700;" id="def-stat-plants">0</div>
+            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:4px;">PLANTS AFFECTED</div>
+          </div>
+          <div class="card" style="padding:18px;border-bottom:3px solid var(--accent3);">
+            <div style="font-size:22px;margin-bottom:8px;">📅</div>
+            <div style="font-family:'Space Mono',monospace;font-size:28px;font-weight:700;" id="def-stat-week">0</div>
+            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:4px;">THIS WEEK</div>
+          </div>
+        </div>
+        <div id="defect-list"></div>
+      </div>
+
       <!-- ===== PIN MANAGEMENT PAGE ===== -->
       <div class="page" id="page-pin-management">
         <div style="margin-bottom:24px;">
@@ -669,7 +713,7 @@ function showPage(page) {
   document.getElementById('page-' + page).classList.add('active');
   document.querySelector(`[data-page="${page}"]`).classList.add('active');
   document.getElementById('page-title').textContent = pageTitles[page] || page;
-  const renders = { dashboard: renderDashboard, plants: renderPlants, 'qr-codes': renderQRCodes, submissions: renderSubmissions, 'form-templates': renderTemplates, compliance: renderCompliance, notifications: renderNotifications, settings: renderSettings, 'pin-management': renderPinManagement };
+  const renders = { dashboard: renderDashboard, plants: renderPlants, 'qr-codes': renderQRCodes, submissions: renderSubmissions, 'form-templates': renderTemplates, compliance: renderCompliance, defects: renderDefects, notifications: renderNotifications, settings: renderSettings, 'pin-management': renderPinManagement };
   if (renders[page]) renders[page]();
 }
 
@@ -702,7 +746,7 @@ function renderDashboard() {
     rsList.innerHTML = allSubs.slice(0, 8).map(s => {
       const plant = DB.getPlant(s.plantId);
       const score = Math.round((s.passed / s.total) * 100);
-      const color = score >= 80 ? '#00C896' : score >= 60 ? '#FF6B35' : '#FF4757';
+      const color = score === 100 ? '#00C896' : score >= 90 ? '#FF6B35' : '#FF4757';
       return `<div class="list-item">
         <span style="font-size:24px;">${plant?.photo || '🏗️'}</span>
         <div style="flex:1;min-width:0;">
@@ -795,16 +839,21 @@ function renderPlantCards(plants) {
           <div style="width:10px;height:10px;border-radius:50%;background:${color};box-shadow:0 0 8px ${color};margin-top:4px;"></div>
         </div>
       </div>
+      ${p.outOfService ? `<div style="background:rgba(255,71,87,0.1);border:1px solid rgba(255,71,87,0.3);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:var(--danger);font-weight:700;">🚫 OUT OF SERVICE — ${p.oosReason||'Reason not specified'}</div>` : ''}
       <div class="plant-status">
         <div class="status-dot" style="background:${color};box-shadow:0 0 6px ${color};"></div>
         <span style="color:${color};font-weight:700;">${label}</span>
         <span style="margin-left:auto;">Last: ${UI.timeAgo(p.lastInspected)}</span>
       </div>
-      <div style="font-size:11px;color:var(--muted);margin-top:6px;font-family:'Space Mono',monospace;">${subs.length} submission${subs.length !== 1 ? 's' : ''}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;font-family:'Space Mono',monospace;">${subs.length} submission${subs.length !== 1 ? 's' : ''} · ${DB.getDefectsForPlant(p.id).filter(d=>d.status==='open').length} open defect(s)</div>
       <div class="plant-actions" onclick="event.stopPropagation()">
-        <a href="form.html?plant=${p.id}" target="_blank" class="btn btn-primary btn-sm">📋 Fill Form</a>
+        ${p.outOfService
+          ? `<button class="btn btn-primary btn-sm" onclick="returnToService('${p.id}')">✅ Return to Service</button>`
+          : `<a href="form.html?plant=${p.id}" target="_blank" class="btn btn-primary btn-sm">📋 Fill Form</a>`
+        }
         <button class="btn btn-secondary btn-sm" onclick="showQR('${p.id}')">📱 QR</button>
         <button class="btn btn-secondary btn-sm" onclick="editPlant('${p.id}')">✏️</button>
+        <button class="btn btn-secondary btn-sm" onclick="toggleOOS('${p.id}')">${p.outOfService ? '🔧' : '🚫'}</button>
         <button class="btn btn-danger btn-sm" onclick="deletePlant('${p.id}')">🗑️</button>
       </div>
     </div>`;
@@ -828,7 +877,7 @@ function viewPlant(id) {
   const histHTML = subs.length === 0 ? '<p style="color:var(--muted);">No submissions for this plant yet.</p>' :
     subs.slice(0, 10).map(s => {
       const score = Math.round((s.passed / s.total) * 100);
-      const c = score >= 80 ? '#00C896' : score >= 60 ? '#FF6B35' : '#FF4757';
+      const c = score === 100 ? '#00C896' : score >= 90 ? '#FF6B35' : '#FF4757';
       return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
         <div><div style="font-size:13px;font-weight:700;">${s.formId}</div><div style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;">${s.operatorName} · ${UI.formatDate(s.submittedAt)}</div></div>
         <div style="color:${c};font-family:'Space Mono',monospace;font-weight:700;">${score}%</div>
@@ -998,8 +1047,8 @@ function renderSubmissionTable(subs) {
   tbody.innerHTML = subs.map(s => {
     const plant = DB.getPlant(s.plantId);
     const score = Math.round((s.passed / s.total) * 100);
-    const color = score >= 80 ? '#00C896' : score >= 60 ? '#FF6B35' : '#FF4757';
-    const status = score === 100 ? 'PASS' : score >= 80 ? 'PASS' : score >= 60 ? 'PARTIAL' : 'FAIL';
+    const color = score === 100 ? '#00C896' : score >= 90 ? '#FF6B35' : '#FF4757';
+    const status = score === 100 ? 'PASS' : score >= 90 ? 'PARTIAL' : 'FAIL';
     const statusColor = status === 'PASS' ? '#00C896' : status === 'PARTIAL' ? '#FF6B35' : '#FF4757';
     return `<tr>
       <td>${UI.badge(s.formId, '#7B61FF')}</td>
@@ -1027,7 +1076,7 @@ function viewSubmission(id) {
   const plant = DB.getPlant(s.plantId);
   const template = DB.getFormTemplate(s.formId);
   const score = Math.round((s.passed / s.total) * 100);
-  const color = score >= 80 ? '#00C896' : score >= 60 ? '#FF6B35' : '#FF4757';
+  const color = score === 100 ? '#00C896' : score >= 90 ? '#FF6B35' : '#FF4757';
   
   let sectionsHTML = '';
   if (template && s.answers) {
@@ -1203,6 +1252,230 @@ function updateNotifBadge() {
 }
 
 // ============================================================
+// ============================================================
+// DEFECT TRACKER
+// ============================================================
+let defectFilter = 'all';
+function filterDefects(f) {
+  defectFilter = f;
+  ['all','open','resolved'].forEach(x => {
+    const el = document.getElementById('df-' + (x==='resolved'?'res':x==='open'?'open':'all'));
+    if (el) el.className = 'btn btn-sm ' + (x===f ? 'btn-primary' : 'btn-secondary');
+  });
+  renderDefects();
+}
+
+function renderDefects() {
+  const all = DB.getDefects();
+  const open = all.filter(d => d.status === 'open');
+  const res  = all.filter(d => d.status === 'resolved');
+  const week = new Date(); week.setDate(week.getDate()-7);
+  const thisWeek = all.filter(d => new Date(d.reportedAt) > week);
+  const affected = new Set(open.map(d => d.plantId));
+
+  document.getElementById('def-stat-open').textContent   = open.length;
+  document.getElementById('def-stat-res').textContent    = res.length;
+  document.getElementById('def-stat-plants').textContent = affected.size;
+  document.getElementById('def-stat-week').textContent   = thisWeek.length;
+
+  // Update nav badge
+  const badge = document.getElementById('defects-badge');
+  if (badge) { badge.textContent = open.length; badge.style.display = open.length > 0 ? '' : 'none'; }
+
+  let list = defectFilter === 'open' ? open : defectFilter === 'resolved' ? res : all;
+
+  const container = document.getElementById('defect-list');
+  if (!container) return;
+  if (list.length === 0) {
+    container.innerHTML = `<div style="text-align:center;padding:60px;color:var(--muted);">${defectFilter==='open' ? '✅ No open defects — all clear!' : '🔧 No defects recorded yet'}</div>`;
+    return;
+  }
+
+  container.innerHTML = list.map(d => {
+    const plant = DB.getPlant(d.plantId);
+    const isOpen = d.status === 'open';
+    const session = AUTH.getSession();
+    const canResolve = ['admin','project_manager','site_manager','safety_officer'].includes(AUTH.getRole());
+    return `<div style="background:var(--surface);border:1px solid ${isOpen?'rgba(255,71,87,0.3)':'rgba(46,125,82,0.2)'};border-radius:14px;padding:18px 20px;margin-bottom:12px;transition:all 0.2s;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:200px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+            <span style="background:${isOpen?'rgba(255,71,87,0.15)':'rgba(46,125,82,0.15)'};color:${isOpen?'var(--danger)':'var(--accent)'};border:1px solid ${isOpen?'rgba(255,71,87,0.3)':'rgba(46,125,82,0.3)'};padding:2px 10px;border-radius:20px;font-size:10px;font-weight:700;font-family:'Space Mono',monospace;">${isOpen?'🔴 OPEN':'✅ RESOLVED'}</span>
+            <span style="font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);">${d.id}</span>
+          </div>
+          <div style="font-size:15px;font-weight:700;margin-bottom:4px;">${d.item}</div>
+          <div style="font-size:12px;color:var(--muted);">
+            🏗️ ${plant?.name||d.plantId} · 📋 ${d.formId} · 👷 ${d.operatorName} · ${UI.timeAgo(d.reportedAt)}
+          </div>
+          ${d.section ? `<div style="font-size:11px;color:var(--muted);margin-top:3px;font-family:'Space Mono',monospace;">Section: ${d.section}</div>` : ''}
+          ${!isOpen ? `<div style="margin-top:8px;font-size:12px;color:var(--accent);">✅ Resolved by ${d.resolvedBy} · ${UI.formatDateShort(d.resolvedAt)}${d.resolveNotes?' — '+d.resolveNotes:''}</div>` : ''}
+        </div>
+        ${isOpen && canResolve ? `
+        <button class="btn btn-primary btn-sm" onclick="resolveDefect('${d.id}')">✅ Mark Resolved</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function resolveDefect(id) {
+  const notes = prompt('Resolution notes (optional):') ?? '';
+  if (notes === null) return; // cancelled
+  const name = AUTH.getSession()?.name || 'Unknown';
+  DB.resolveDefect(id, name, notes);
+  UI.toast('Defect marked as resolved', 'success');
+  renderDefects();
+  // Update plant open-defect count
+  renderPlants();
+}
+
+function printDefectReport() {
+  const defects = DB.getDefects();
+  const settings = DB.getSettings();
+  const today = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+  const win = window.open('','_blank');
+  const rows = defects.map(d => {
+    const plant = DB.getPlant(d.plantId);
+    return `<tr>
+      <td>${d.id}</td><td>${plant?.name||d.plantId}</td><td>${d.formId}</td>
+      <td><strong>${d.item}</strong>${d.section?'<br><small>'+d.section+'</small>':''}</td>
+      <td>${d.operatorName}</td>
+      <td>${new Date(d.reportedAt).toLocaleDateString('en-GB')}</td>
+      <td style="${d.status==='open'?'color:#CC0000;font-weight:bold;':''}">${d.status==='open'?'OPEN':'RESOLVED'}</td>
+      <td>${d.resolvedBy||'—'}</td>
+    </tr>`;
+  }).join('');
+  win.document.write(`<!DOCTYPE html><html><head><title>Defect Report</title>
+  <style>body{font-family:Arial,sans-serif;margin:30px;font-size:11px;}
+  .header{display:flex;justify-content:space-between;border-bottom:3px solid #1B5E35;padding-bottom:12px;margin-bottom:16px;}
+  .company{font-size:18px;font-weight:bold;color:#1B5E35;}
+  table{width:100%;border-collapse:collapse;}
+  th{background:#1B5E35;color:white;padding:7px 8px;text-align:left;font-size:9px;letter-spacing:1px;}
+  td{padding:6px 8px;border-bottom:1px solid #eee;}
+  tr:nth-child(even) td{background:#f9f9f9;}
+  </style></head><body>
+  <div class="header"><div><div class="company">${settings.companyName}</div><h1 style="font-size:16px;">Defect Report</h1></div>
+  <div style="text-align:right;font-size:11px;color:#666;">Site: ${settings.siteName}<br>Printed: ${today}</div></div>
+  <table><tr><th>ID</th><th>PLANT</th><th>FORM</th><th>DEFECT</th><th>REPORTED BY</th><th>DATE</th><th>STATUS</th><th>RESOLVED BY</th></tr>
+  ${rows}</table>
+  <script>setTimeout(()=>window.print(),500)<\/script></body></html>`);
+}
+
+// ============================================================
+// PLANT OUT OF SERVICE
+// ============================================================
+function toggleOOS(plantId) {
+  const plant = DB.getPlant(plantId);
+  if (plant.outOfService) {
+    returnToService(plantId);
+  } else {
+    const reason = prompt('Reason for taking out of service:');
+    if (!reason) return;
+    const name = AUTH.getSession()?.name || 'Unknown';
+    DB.setOutOfService(plantId, true, reason, name);
+    UI.toast(`${plant.name} marked out of service`, 'warning');
+    renderPlants();
+    renderDashboard();
+  }
+}
+
+function returnToService(plantId) {
+  const plant = DB.getPlant(plantId);
+  if (!confirm(`Return ${plant.name} to service?`)) return;
+  const name = AUTH.getSession()?.name || 'Unknown';
+  DB.setOutOfService(plantId, false, '', name);
+  UI.toast(`${plant.name} returned to service`, 'success');
+  renderPlants();
+  renderDashboard();
+}
+
+// ============================================================
+// WEEKLY SUMMARY REPORT
+// ============================================================
+function printWeeklySummary() {
+  const settings = DB.getSettings();
+  const plants   = DB.getPlants();
+  const subs     = DB.getSubmissionsThisWeek();
+  const defects  = DB.getDefects().filter(d => {
+    const w = new Date(); w.setDate(w.getDate()-7);
+    return new Date(d.reportedAt) > w;
+  });
+  const today  = new Date().toLocaleDateString('en-GB',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  const weekStart = new Date(); weekStart.setDate(weekStart.getDate()-7);
+  const weekStr = weekStart.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}) + ' – ' + new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+
+  const plantRows = plants.map(p => {
+    const pSubs  = subs.filter(s => s.plantId === p.id);
+    const scores = pSubs.map(s => Math.round((s.passed/s.total)*100));
+    const avg    = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0)/scores.length) : null;
+    const openDef= DB.getDefectsForPlant(p.id).filter(d=>d.status==='open').length;
+    const oos    = p.outOfService ? '<span style="color:#CC0000;font-weight:bold;">OUT OF SERVICE</span>' : '';
+    const color  = avg === null ? '#999' : avg === 100 ? '#1B5E35' : avg >= 90 ? '#AA6600' : '#CC0000';
+    return `<tr>
+      <td>${p.id}</td><td><strong>${p.name}</strong>${oos?'<br>'+oos:''}</td>
+      <td>${p.location}</td><td style="text-align:center;">${pSubs.length}</td>
+      <td style="text-align:center;color:${color};font-weight:bold;">${avg !== null ? avg+'%' : '—'}</td>
+      <td style="text-align:center;${openDef>0?'color:#CC0000;font-weight:bold;':''}">${openDef}</td>
+    </tr>`;
+  }).join('');
+
+  const defRows = defects.map(d => {
+    const plant = DB.getPlant(d.plantId);
+    return `<tr>
+      <td>${d.id}</td><td>${plant?.name||d.plantId}</td><td>${d.formId}</td>
+      <td>${d.item}${d.section?'<br><small style="color:#999">'+d.section+'</small>':''}</td>
+      <td>${d.operatorName}</td>
+      <td>${new Date(d.reportedAt).toLocaleDateString('en-GB')}</td>
+      <td style="${d.status==='open'?'color:#CC0000;font-weight:bold;':''}">${d.status.toUpperCase()}</td>
+    </tr>`;
+  }).join('');
+
+  const total = subs.length;
+  const passing = subs.filter(s => Math.round((s.passed/s.total)*100) === 100).length;
+  const failedSubs = subs.filter(s => s.failed > 0).length;
+
+  const win = window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head><title>Weekly Safety Summary</title>
+  <style>
+    body{font-family:Arial,sans-serif;margin:30px;font-size:11px;color:#111;}
+    .header{border-bottom:3px solid #1B5E35;padding-bottom:12px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:flex-start;}
+    .company{font-size:20px;font-weight:bold;color:#1B5E35;}
+    .report-title{font-size:15px;color:#333;margin-top:4px;}
+    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
+    .stat{border:1px solid #ddd;border-radius:6px;padding:12px;text-align:center;}
+    .stat-val{font-size:28px;font-weight:bold;color:#1B5E35;}
+    .stat-lbl{font-size:9px;color:#666;letter-spacing:1px;margin-top:4px;}
+    h2{font-size:13px;color:#1B5E35;border-bottom:1px solid #eee;padding-bottom:6px;margin:20px 0 10px;}
+    table{width:100%;border-collapse:collapse;margin-bottom:20px;}
+    th{background:#1B5E35;color:white;padding:7px 8px;text-align:left;font-size:9px;letter-spacing:1px;}
+    td{padding:6px 8px;border-bottom:1px solid #eee;vertical-align:top;}
+    tr:nth-child(even) td{background:#f9f9f9;}
+    .footer{margin-top:20px;font-size:9px;color:#999;text-align:center;border-top:1px solid #ddd;padding-top:8px;}
+    @media print{body{margin:10px;}}
+  </style></head><body>
+  <div class="header">
+    <div>
+      <div class="company">${settings.companyName}</div>
+      <div class="report-title">Weekly Safety Inspection Summary</div>
+      <div style="font-size:10px;color:#666;margin-top:4px;">Period: ${weekStr} · Site: ${settings.siteName}</div>
+    </div>
+    <div style="text-align:right;font-size:10px;color:#666;">Printed: ${today}</div>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="stat-val">${total}</div><div class="stat-lbl">TOTAL FORMS</div></div>
+    <div class="stat"><div class="stat-val" style="color:#1B5E35;">${passing}</div><div class="stat-lbl">100% PASS</div></div>
+    <div class="stat"><div class="stat-val" style="color:${failedSubs>0?'#CC0000':'#1B5E35'};">${failedSubs}</div><div class="stat-lbl">WITH DEFECTS</div></div>
+    <div class="stat"><div class="stat-val" style="color:${defects.filter(d=>d.status==='open').length>0?'#CC0000':'#1B5E35'};">${defects.filter(d=>d.status==='open').length}</div><div class="stat-lbl">OPEN DEFECTS</div></div>
+  </div>
+  <h2>Plant Status This Week</h2>
+  <table><tr><th>ID</th><th>PLANT</th><th>LOCATION</th><th style="text-align:center">FORMS</th><th style="text-align:center">AVG SCORE</th><th style="text-align:center">OPEN DEFECTS</th></tr>
+  ${plantRows||'<tr><td colspan="6" style="text-align:center;color:#999;padding:20px;">No plant data</td></tr>'}</table>
+  ${defects.length>0?`<h2>Defects This Week</h2>
+  <table><tr><th>ID</th><th>PLANT</th><th>FORM</th><th>DEFECT</th><th>REPORTED BY</th><th>DATE</th><th>STATUS</th></tr>
+  ${defRows}</table>`:'<h2>Defects This Week</h2><p style="color:#1B5E35;font-weight:bold;">✅ No defects reported this week</p>'}
+  <div class="footer">${settings.companyName} · Weekly Safety Summary · Generated ${today}</div>
+  <script>setTimeout(()=>window.print(),600)<\/script></body></html>`);
+}
+
 // SETTINGS
 // ============================================================
 function renderSettings() {
@@ -1290,12 +1563,13 @@ function resetData() { hardResetData(); }
 // ============================================================
 function renderPinManagement() {
   const session = AUTH.getSession();
-  const isAdmin = session?.role === 'admin';
+  const isAdmin = ['admin','project_manager'].includes(session?.role);
   const roles = [
-    { key: 'admin',          icon: '👑', label: 'Admin',          color: '#FF6B35', desc: 'Full system access' },
-    { key: 'site_manager',   icon: '🏗️', label: 'Site Manager',   color: '#7B61FF', desc: 'Dashboard & plant management' },
-    { key: 'safety_officer', icon: '🛡️', label: 'Safety Officer', color: '#00C896', desc: 'Compliance & submissions' },
-    { key: 'operator',       icon: '👷', label: 'Operator',       color: '#6B7A99', desc: 'Form filling only' },
+    { key: 'admin',           icon: '👑', label: 'Admin',           color: '#C9A84C', desc: 'Full system access' },
+    { key: 'project_manager', icon: '📋', label: 'Project Manager', color: '#FF6B35', desc: 'Full access — same as Admin' },
+    { key: 'site_manager',    icon: '🏗️', label: 'Site Manager',    color: '#7B61FF', desc: 'Dashboard & plant management' },
+    { key: 'safety_officer',  icon: '🛡️', label: 'Safety Officer',  color: '#00C896', desc: 'Compliance & submissions' },
+    { key: 'operator',        icon: '👷', label: 'Operator',        color: '#6B7A99', desc: 'Form filling only' },
   ];
   const pins = AUTH.getPins();
   const defaults = AUTH.DEFAULT_PINS;
