@@ -582,7 +582,7 @@
                 <div style="display:flex;gap:10px;flex-wrap:wrap;">
                   <button class="btn btn-secondary btn-sm" onclick="exportData()">📤 Export JSON</button>
                   <button class="btn btn-secondary btn-sm" onclick="importDataPrompt()">📥 Import JSON</button>
-                  <button class="btn btn-danger btn-sm" onclick="resetData()">⚠️ Reset All Data</button>
+                  <button class="btn btn-danger btn-sm" onclick="hardResetData()">🔄 Reset & Reseed All Data</button>
                 </div>
               </div>
             </div>
@@ -1276,13 +1276,14 @@ function importDataPrompt() {
   input.click();
 }
 
-function resetData() {
-  UI.confirm('This will delete ALL plants, submissions and settings. This cannot be undone. Are you absolutely sure?', () => {
-    localStorage.clear();
-    UI.toast('All data reset. Reloading...', 'warning');
+function hardResetData() {
+  UI.confirm('This will clear ALL data and reload fresh demo data (plants, GA1 records, lifting register, forms). Your PINs will also reset to defaults. Continue?', () => {
+    DB.hardReset();
+    UI.toast('All data reset and reseeded. Reloading...', 'warning');
     setTimeout(() => location.reload(), 1500);
   });
 }
+function resetData() { hardResetData(); }
 
 // ============================================================
 // PIN MANAGEMENT
