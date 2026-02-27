@@ -227,11 +227,11 @@ const DB = {
   // ---------- USERS / SETTINGS ----------
   getSettings() {
     return this.get('settings') || {
-      companyName: 'Acme Construction Ltd',
+      companyName: 'Robert Quinn Ltd',
       siteName: 'Main Construction Site',
-      siteManager: 'John Smith',
-      safetyOfficer: 'Sarah Jones',
-      notifyEmail: 'safety@acme.com',
+      siteManager: 'Site Manager',
+      safetyOfficer: 'Safety Officer',
+      notifyEmail: 'firulescum@gmail.com',
       weeklyFormRequired: 'GA3',
       dailyFormRequired: 'GA2',
     };

@@ -3,11 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GA Forms System — Dashboard</title>
+<title>Robert Quinn Ltd — GA Forms Dashboard</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="js/data.js"></script>
+<script src="js/auth.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/qr.js"></script>
 <style>
@@ -19,7 +20,7 @@
     --border2: #243044;
     --text: #E8EDF5;
     --muted: #6B7A99;
-    --accent: #00C896;
+    --accent: #2E7D52;
     --accent2: #FF6B35;
     --accent3: #7B61FF;
     --danger: #FF4757;
@@ -33,8 +34,8 @@
     content: '';
     position: fixed; inset: 0; z-index: 0;
     background-image: 
-      linear-gradient(rgba(0,200,150,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0,200,150,0.03) 1px, transparent 1px);
+      linear-gradient(rgba(46,125,82,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(46,125,82,0.03) 1px, transparent 1px);
     background-size: 60px 60px;
     animation: gridMove 20s linear infinite;
     pointer-events: none;
@@ -78,7 +79,7 @@
     position: relative;
   }
   .nav-link:hover { background: var(--surface2); color: var(--text); border-color: var(--border); }
-  .nav-link.active { background: rgba(0,200,150,0.1); color: var(--accent); border-color: rgba(0,200,150,0.2); }
+  .nav-link.active { background: rgba(46,125,82,0.1); color: var(--accent); border-color: rgba(46,125,82,0.2); }
   .nav-link .icon { font-size: 18px; width: 22px; text-align: center; }
   .nav-badge {
     margin-left: auto; background: var(--danger); color: white;
@@ -93,14 +94,14 @@
   .site-info strong { color: var(--accent); display: block; }
 
   /* ---------- MAIN ---------- */
-  .main { margin-left: 260px; padding: 0; display: flex; flex-direction: column; min-height: 100vh; }
+  .main { margin-left: 260px; padding: 0; display: flex; flex-direction: column; min-height: 100vh; min-width: 0; overflow-x: hidden; }
   
   .topbar {
     background: rgba(6,10,20,0.8); backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border);
-    padding: 16px 32px;
+    padding: 14px 28px;
     display: flex; align-items: center; justify-content: space-between;
-    position: sticky; top: 0; z-index: 50;
+    position: sticky; top: 0; z-index: 50; min-width: 0;
   }
   .page-title { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
   .topbar-actions { display: flex; align-items: center; gap: 12px; }
@@ -111,8 +112,8 @@
     transition: all 0.2s; letter-spacing: 0.5px; text-decoration: none;
     display: inline-flex; align-items: center; gap: 7px;
   }
-  .btn-primary { background: var(--accent); color: #060A14; }
-  .btn-primary:hover { background: #00e8ad; transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0,200,150,0.4); }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: #3a9e68; transform: translateY(-1px); box-shadow: 0 4px 20px rgba(46,125,82,0.4); }
   .btn-secondary { background: transparent; color: var(--muted); border: 1px solid var(--border2); }
   .btn-secondary:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
   .btn-danger { background: var(--danger); color: white; }
@@ -120,17 +121,17 @@
   .btn-sm { padding: 6px 12px; font-size: 11px; }
 
   /* ---------- CONTENT ---------- */
-  .content { padding: 32px; flex: 1; }
+  .content { padding: 24px 28px; flex: 1; min-width: 0; overflow-x: hidden; }
   .page { display: none; }
   .page.active { display: block; animation: fadeIn 0.3s ease; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
   /* ---------- STATS GRID ---------- */
-  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 32px; }
+  .stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 28px; }
   .stat-card {
     background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
-    padding: 24px; position: relative; overflow: hidden;
-    transition: transform 0.2s, border-color 0.2s;
+    padding: 20px; position: relative; overflow: hidden;
+    transition: transform 0.2s, border-color 0.2s; min-width: 0;
   }
   .stat-card:hover { transform: translateY(-2px); border-color: var(--border2); }
   .stat-card::after {
@@ -140,9 +141,9 @@
   .stat-card.orange::after { background: var(--accent2); }
   .stat-card.purple::after { background: var(--accent3); }
   .stat-card.red::after { background: var(--danger); }
-  .stat-icon { font-size: 28px; margin-bottom: 12px; display: block; }
-  .stat-value { font-family: 'Space Mono', monospace; font-size: 36px; font-weight: 700; line-height: 1; margin-bottom: 6px; }
-  .stat-label { font-size: 12px; color: var(--muted); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
+  .stat-icon { font-size: 26px; margin-bottom: 10px; display: block; }
+  .stat-value { font-family: 'Space Mono', monospace; font-size: 32px; font-weight: 700; line-height: 1; margin-bottom: 6px; }
+  .stat-label { font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .stat-sub { font-size: 11px; color: var(--muted); margin-top: 6px; font-family: 'Space Mono', monospace; }
 
   /* ---------- CARDS ---------- */
@@ -240,12 +241,19 @@
   .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 14px; }
 
   /* ---------- RESPONSIVE ---------- */
-  @media (max-width: 1200px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 1200px) { .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 1024px) { .two-col { grid-template-columns: 1fr; } }
   @media (max-width: 900px) {
     .app { grid-template-columns: 1fr; }
     .sidebar { display: none; }
     .main { margin-left: 0; }
     .two-col, .three-col { grid-template-columns: 1fr; }
+    .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .content { padding: 16px; }
+  }
+  @media (max-width: 500px) {
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .stat-value { font-size: 28px; }
   }
 
   /* ---------- SWITCH TOGGLE ---------- */
@@ -272,9 +280,15 @@
   <!-- SIDEBAR -->
   <aside class="sidebar">
     <div class="sidebar-brand">
-      <span class="brand-icon">🛡️</span>
-      <div class="brand-name">GA FORMS</div>
-      <div class="brand-sub">SAFETY SYSTEM</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px;">
+        <div style="width:40px;height:40px;border-radius:50%;background:#1B5E35;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 16px rgba(27,94,53,0.4);">
+          <span style="font-family:Georgia,serif;font-size:22px;font-weight:700;color:white;line-height:1;">Q</span>
+        </div>
+        <div>
+          <div class="brand-name">ROBERT QUINN</div>
+          <div class="brand-sub">LTD · GA FORMS</div>
+        </div>
+      </div>
     </div>
     <nav class="sidebar-nav">
       <div class="nav-section-label">OVERVIEW</div>
@@ -304,6 +318,9 @@
         <span class="icon">🔔</span> Notifications
         <span class="nav-badge" id="notif-badge" style="display:none">0</span>
       </a>
+      <a class="nav-link" id="nav-pin-management" data-page="pin-management" onclick="showPage('pin-management')" style="display:none;">
+        <span class="icon">🔐</span> PIN Management
+      </a>
       <a class="nav-link" data-page="settings" onclick="showPage('settings')">
         <span class="icon">⚙️</span> Settings
       </a>
@@ -322,7 +339,9 @@
       <div class="page-title" id="page-title">Dashboard</div>
       <div class="topbar-actions">
         <span id="current-date" class="mono" style="font-size:12px;"></span>
+        <div id="role-badge" style="display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border2);padding:6px 14px;border-radius:20px;font-size:12px;font-family:'Space Mono',monospace;"></div>
         <button class="btn btn-primary" onclick="window.open('form.html','_blank')">+ New Form</button>
+        <button class="btn btn-secondary" onclick="logout()" title="Logout">⏻</button>
       </div>
     </div>
 
@@ -564,11 +583,64 @@
         </div>
       </div>
 
+      <!-- ===== PIN MANAGEMENT PAGE ===== -->
+      <div class="page" id="page-pin-management">
+        <div style="margin-bottom:24px;">
+          <div style="font-size:13px;color:var(--muted);">Manage access PINs for each role. Only Admin can change all PINs.</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px;" id="pin-cards"></div>
+      </div>
+
     </div><!-- /content -->
   </main>
 </div>
 
 <script>
+// ============================================================
+// AUTH GUARD & SESSION
+// ============================================================
+function checkAuth() {
+  if (!AUTH.isLoggedIn()) {
+    window.location.href = 'login.html';
+    return false;
+  }
+  return true;
+}
+
+function logout() {
+  AUTH.clearSession();
+  window.location.href = 'login.html';
+}
+
+function initRoleBadge() {
+  const session = AUTH.getSession();
+  const role = AUTH.getRoleInfo();
+  if (!session || !role) return;
+  document.getElementById('role-badge').innerHTML =
+    `<span style="color:${role.color};">${role.icon}</span>
+     <span style="color:var(--text);">${session.name}</span>
+     <span style="color:${role.color};font-size:10px;">${role.label.toUpperCase()}</span>`;
+
+  // Show PIN management for admin only
+  if (session.role === 'admin') {
+    document.getElementById('nav-pin-management').style.display = '';
+  }
+
+  // Hide nav items based on role permissions
+  const navMap = {
+    'plants': 'plants',
+    'qr-codes': 'qr-codes',
+    'submissions': 'submissions',
+    'form-templates': 'form-templates',
+    'compliance': 'compliance',
+    'settings': 'settings',
+  };
+  Object.entries(navMap).forEach(([page, navPage]) => {
+    const link = document.querySelector(`[data-page="${page}"]`);
+    if (link && !AUTH.can(page)) link.style.display = 'none';
+  });
+}
+
 // ============================================================
 // NAVIGATION
 // ============================================================
@@ -580,6 +652,7 @@ const pageTitles = {
   'form-templates': '📝 Form Templates',
   compliance: '✅ Compliance',
   notifications: '🔔 Notifications',
+  'pin-management': '🔐 PIN Management',
   settings: '⚙️ Settings',
 };
 
@@ -589,7 +662,7 @@ function showPage(page) {
   document.getElementById('page-' + page).classList.add('active');
   document.querySelector(`[data-page="${page}"]`).classList.add('active');
   document.getElementById('page-title').textContent = pageTitles[page] || page;
-  const renders = { dashboard: renderDashboard, plants: renderPlants, 'qr-codes': renderQRCodes, submissions: renderSubmissions, 'form-templates': renderTemplates, compliance: renderCompliance, notifications: renderNotifications, settings: renderSettings };
+  const renders = { dashboard: renderDashboard, plants: renderPlants, 'qr-codes': renderQRCodes, submissions: renderSubmissions, 'form-templates': renderTemplates, compliance: renderCompliance, notifications: renderNotifications, settings: renderSettings, 'pin-management': renderPinManagement };
   if (renders[page]) renders[page]();
 }
 
@@ -677,7 +750,7 @@ function renderDashboard() {
   });
   const maxVal = Math.max(...weekData, 1);
   document.getElementById('week-chart').innerHTML = weekData.map((v, i) => `
-    <div class="mini-bar" title="${days[i]}: ${v} submissions" style="height:${(v/maxVal)*100}%;background:${i===6?'var(--accent)':'rgba(0,200,150,0.4)'};">
+    <div class="mini-bar" title="${days[i]}: ${v} submissions" style="height:${(v/maxVal)*100}%;background:${i===6?'var(--accent)':'rgba(46,125,82,0.4)'};">
     </div>`).join('');
   document.getElementById('week-labels').innerHTML = days.map(d => `<span>${d}</span>`).join('');
 }
@@ -1205,9 +1278,88 @@ function resetData() {
 }
 
 // ============================================================
+// PIN MANAGEMENT
+// ============================================================
+function renderPinManagement() {
+  const session = AUTH.getSession();
+  const isAdmin = session?.role === 'admin';
+  const roles = [
+    { key: 'admin',          icon: '👑', label: 'Admin',          color: '#FF6B35', desc: 'Full system access' },
+    { key: 'site_manager',   icon: '🏗️', label: 'Site Manager',   color: '#7B61FF', desc: 'Dashboard & plant management' },
+    { key: 'safety_officer', icon: '🛡️', label: 'Safety Officer', color: '#00C896', desc: 'Compliance & submissions' },
+    { key: 'operator',       icon: '👷', label: 'Operator',       color: '#6B7A99', desc: 'Form filling only' },
+  ];
+  const pins = AUTH.getPins();
+  const defaults = AUTH.DEFAULT_PINS;
+
+  document.getElementById('pin-cards').innerHTML = roles.map(r => {
+    const isDefault = pins[r.key] === defaults[r.key];
+    const isCurrentRole = session?.role === r.key;
+    const canChange = isAdmin || isCurrentRole;
+    return `<div class="card">
+      <div class="card-header">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span style="font-size:28px;">${r.icon}</span>
+          <div>
+            <div style="font-size:16px;font-weight:700;color:${r.color};">${r.label}</div>
+            <div style="font-size:12px;color:var(--muted);">${r.desc}</div>
+          </div>
+        </div>
+        ${isDefault ? `<span style="background:rgba(255,183,0,0.1);color:#FFB800;border:1px solid rgba(255,183,0,0.3);padding:3px 10px;border-radius:20px;font-size:10px;font-family:'Space Mono',monospace;">DEFAULT PIN</span>` : `<span style="background:rgba(46,125,82,0.1);color:var(--accent);border:1px solid rgba(0,200,150,0.3);padding:3px 10px;border-radius:20px;font-size:10px;font-family:'Space Mono',monospace;">CUSTOM PIN</span>`}
+      </div>
+      <div class="card-body">
+        ${canChange ? `
+        <div class="form-group">
+          <label class="form-label">${isAdmin && !isCurrentRole ? 'SET NEW PIN (Admin Override)' : 'CURRENT PIN'}</label>
+          ${!isAdmin || isCurrentRole ? `<input type="password" class="form-input" id="pin-old-${r.key}" placeholder="Current PIN" inputmode="numeric" maxlength="6">` : ''}
+        </div>
+        <div class="form-group">
+          <label class="form-label">NEW PIN (min 4 digits)</label>
+          <input type="password" class="form-input" id="pin-new-${r.key}" placeholder="New PIN" inputmode="numeric" maxlength="6">
+        </div>
+        <div class="form-group">
+          <label class="form-label">CONFIRM NEW PIN</label>
+          <input type="password" class="form-input" id="pin-confirm-${r.key}" placeholder="Confirm PIN" inputmode="numeric" maxlength="6">
+        </div>
+        <button class="btn btn-primary" onclick="changePinFor('${r.key}', ${isAdmin && !isCurrentRole})">🔐 Update PIN</button>
+        ` : `<p style="color:var(--muted);font-size:13px;">Only Admin or the role holder can change this PIN.</p>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function changePinFor(role, adminOverride) {
+  const newPin = document.getElementById(`pin-new-${role}`)?.value;
+  const confirmPin = document.getElementById(`pin-confirm-${role}`)?.value;
+  const oldPin = document.getElementById(`pin-old-${role}`)?.value;
+
+  if (newPin !== confirmPin) { UI.toast('New PINs do not match', 'error'); return; }
+  if (!newPin || newPin.length < 4) { UI.toast('PIN must be at least 4 digits', 'error'); return; }
+  if (!/^\d+$/.test(newPin)) { UI.toast('PIN must contain numbers only', 'error'); return; }
+
+  let result;
+  if (adminOverride) {
+    result = AUTH.adminChangePin(role, newPin);
+  } else {
+    result = AUTH.changePin(role, oldPin, newPin);
+  }
+
+  if (result.ok) {
+    UI.toast(`PIN updated for ${AUTH.ROLES[role].label}`, 'success');
+    DB.addNotification({ title: '🔐 PIN Changed', message: `PIN updated for ${AUTH.ROLES[role].label}`, type: 'info' });
+    renderPinManagement();
+  } else {
+    UI.toast(result.error, 'error');
+  }
+}
+
+// ============================================================
 // INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
+  // Auth guard
+  if (!checkAuth()) return;
+  initRoleBadge();
   // Date
   document.getElementById('current-date').textContent = new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
   
