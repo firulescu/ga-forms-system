@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Robert Quinn Ltd — GA Forms</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="js/data.js"></script>
+<script src="js/auth.js"></script>
+<style>
+  :root { --bg:#060A14; --surface:#0D1421; --surface2:#111827; --border:#1A2333; --border2:#243044; --text:#E8EDF5; --muted:#6B7A99; --accent:#2E7D52; --danger:#FF4757; --amber:#FF6B35; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--text); font-family:'Syne',sans-serif; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
+  body::before { content:''; position:fixed; inset:0; z-index:0;
+    background-image:linear-gradient(rgba(46,125,82,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(46,125,82,0.04) 1px,transparent 1px);
+    background-size:50px 50px; animation:gridMove 15s linear infinite; pointer-events:none; }
+  @keyframes gridMove { from{background-position:0 0} to{background-position:50px 50px} }
+  .wrap { position:relative; z-index:1; width:100%; max-width:420px; }
+
+  /* BRAND */
+  .brand { text-align:center; margin-bottom:24px; }
+  .brand-logo { width:64px; height:64px; border-radius:50%; background:#1B5E35; display:flex; align-items:center; justify-content:center; margin:0 auto 10px; box-shadow:0 0 0 8px rgba(27,94,53,0.12),0 0 40px rgba(27,94,53,0.25); animation:float 3s ease-in-out infinite; }
+  .logo-q { font-family:Georgia,serif; font-size:36px; font-weight:700; color:white; }
+  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+  .brand-name { font-family:'Space Mono',monospace; font-size:12px; font-weight:700; color:var(--accent); letter-spacing:3px; }
+  .brand-sub  { font-size:10px; color:var(--muted); letter-spacing:2px; margin-top:3px; font-family:'Space Mono',monospace; }
+
+  /* CARD */
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:24px; box-shadow:0 24px 80px rgba(0,0,0,0.4); }
+
+  /* STEP LABEL */
+  .step-lbl { font-size:10px; color:var(--muted); letter-spacing:3px; font-family:'Space Mono',monospace; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+  .step-lbl::after { content:''; flex:1; height:1px; background:var(--border); }
+
+  /* PROGRESS */
+  .prog { display:flex; gap:6px; justify-content:center; margin-bottom:18px; }
+  .prog-dot { width:6px; height:6px; border-radius:50%; background:var(--border2); transition:background 0.2s; }
+  .prog-dot.on { background:var(--accent); }
+
+  /* CHIP */
+  .chip { display:flex; align-items:center; gap:10px; background:rgba(46,125,82,0.08); border:1px solid rgba(46,125,82,0.25); border-radius:10px; padding:9px 13px; margin-bottom:14px; }
+  .chip-main { flex:1; font-size:13px; font-weight:700; color:var(--accent); }
+  .chip-sub  { font-size:11px; color:var(--muted); margin-top:1px; }
+  .chip-change { font-size:11px; color:var(--muted); cursor:pointer; font-family:'Space Mono',monospace; padding:3px 8px; border:1px solid var(--border2); border-radius:6px; white-space:nowrap; flex-shrink:0; }
+  .chip-change:hover { border-color:var(--accent); color:var(--text); }
+
+  /* SITE LIST */
+  .site-search { width:100%; background:var(--surface2); border:1px solid var(--border2); border-radius:10px; color:var(--text); font-family:'Syne',sans-serif; font-size:14px; padding:10px 14px; margin-bottom:10px; outline:none; }
+  .site-search:focus { border-color:var(--accent); }
+  .site-list { display:flex; flex-direction:column; gap:8px; max-height:260px; overflow-y:auto; }
+  .site-btn { background:var(--surface2); border:1px solid var(--border2); border-radius:10px; padding:12px 14px; cursor:pointer; transition:all 0.15s; text-align:left; display:flex; align-items:center; gap:12px; }
+  .site-btn:hover { border-color:var(--accent); background:rgba(46,125,82,0.06); }
+  .site-icon { width:36px; height:36px; border-radius:8px; background:#1B5E35; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+  .site-name { font-size:13px; font-weight:700; }
+  .site-meta { font-size:11px; color:var(--muted); margin-top:2px; font-family:'Space Mono',monospace; }
+  .last-site-hint { font-size:11px; color:var(--accent); font-family:'Space Mono',monospace; margin-bottom:10px; padding:6px 10px; background:rgba(46,125,82,0.06); border-radius:8px; }
+
+  /* WHO ARE YOU — two-path choice */
+  .path-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:4px; }
+  .path-btn { background:var(--surface2); border:2px solid var(--border2); border-radius:14px; padding:18px 12px; cursor:pointer; text-align:center; transition:all 0.15s; }
+  .path-btn:hover { border-color:var(--accent); background:rgba(46,125,82,0.06); }
+  .path-icon { font-size:28px; margin-bottom:8px; }
+  .path-title { font-size:13px; font-weight:800; }
+  .path-desc  { font-size:11px; color:var(--muted); margin-top:4px; font-family:'Space Mono',monospace; line-height:1.4; }
+
+  /* NAME INPUT (operator) */
+  .name-big { width:100%; background:var(--surface2); border:2px solid var(--border2); border-radius:12px; color:var(--text); font-family:'Syne',sans-serif; font-size:18px; font-weight:600; padding:16px 18px; outline:none; transition:border-color 0.2s; margin-bottom:8px; }
+  .name-big:focus { border-color:var(--accent); }
+  .name-big::placeholder { color:var(--muted); font-weight:400; font-size:15px; }
+
+  /* NAME SUGGESTIONS (staff) */
+  .suggestions { display:flex; flex-direction:column; gap:6px; margin-bottom:10px; max-height:220px; overflow-y:auto; }
+  .suggest-btn { background:var(--surface2); border:1px solid var(--border2); border-radius:9px; padding:10px 14px; cursor:pointer; transition:all 0.15s; text-align:left; display:flex; align-items:center; gap:10px; }
+  .suggest-btn:hover { border-color:var(--accent); background:rgba(46,125,82,0.06); }
+  .suggest-name { font-size:13px; font-weight:700; }
+  .suggest-role { font-size:11px; font-family:'Space Mono',monospace; margin-top:1px; }
+  .suggest-empty { font-size:12px; color:var(--muted); text-align:center; padding:16px; font-family:'Space Mono',monospace; }
+
+  /* USER CHIP */
+  .user-chip { display:flex; align-items:center; gap:10px; background:rgba(46,125,82,0.08); border:1px solid rgba(46,125,82,0.25); border-radius:12px; padding:12px 14px; margin-bottom:14px; animation:fadeIn 0.2s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
+  .user-chip-name { font-size:15px; font-weight:700; }
+  .user-chip-role { font-size:11px; font-family:'Space Mono',monospace; margin-top:2px; }
+  .user-chip-change { font-size:11px; color:var(--muted); cursor:pointer; font-family:'Space Mono',monospace; padding:3px 8px; border:1px solid var(--border2); border-radius:6px; margin-left:auto; }
+  .user-chip-change:hover { border-color:var(--danger); color:var(--danger); }
+
+  /* PIN */
+  .pin-row { display:flex; gap:10px; justify-content:center; margin:12px 0; }
+  .dot { width:14px; height:14px; border-radius:50%; border:2px solid var(--border2); transition:all 0.15s; }
+  .dot.filled { background:var(--accent); border-color:var(--accent); box-shadow:0 0 8px rgba(46,125,82,0.5); }
+  .dot.error  { background:var(--danger); border-color:var(--danger); animation:shake 0.35s; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
+  .numpad { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .num-btn { background:var(--surface2); border:1px solid var(--border2); color:var(--text); font-family:'Space Mono',monospace; font-size:20px; font-weight:700; height:56px; border-radius:11px; cursor:pointer; transition:all 0.1s; user-select:none; -webkit-tap-highlight-color:transparent; display:flex; align-items:center; justify-content:center; }
+  .num-btn:active { transform:scale(0.91); background:var(--border2); }
+  .num-btn.del { font-size:16px; color:var(--muted); }
+  .num-btn.go  { background:var(--accent); color:white; border-color:var(--accent); font-size:13px; font-weight:700; letter-spacing:1px; }
+  .num-btn.go:hover { background:#3a9e68; }
+  .num-btn.go:disabled { background:var(--surface2); color:var(--muted); border-color:var(--border2); cursor:not-allowed; }
+
+  /* OPERATOR PIN HINT */
+  .op-hint { font-size:11px; color:var(--muted); text-align:center; font-family:'Space Mono',monospace; margin-bottom:10px; padding:7px 12px; background:rgba(255,107,53,0.06); border:1px solid rgba(255,107,53,0.15); border-radius:8px; line-height:1.5; }
+
+  .err { font-size:12px; color:var(--danger); text-align:center; min-height:16px; font-family:'Space Mono',monospace; margin:6px 0 2px; }
+  .back-link { text-align:center; font-size:12px; color:var(--muted); margin-top:12px; cursor:pointer; font-family:'Space Mono',monospace; }
+  .back-link:hover { color:var(--text); }
+
+  /* SETUP */
+  .setup-box { text-align:center; padding:4px 0 10px; }
+  .setup-title { font-size:16px; font-weight:800; margin-bottom:6px; }
+  .setup-sub { font-size:12px; color:var(--muted); margin-bottom:18px; font-family:'Space Mono',monospace; line-height:1.6; }
+  .setup-input { width:100%; background:var(--surface2); border:1px solid var(--border2); border-radius:10px; color:var(--text); font-family:'Syne',sans-serif; font-size:14px; padding:11px 14px; outline:none; margin-bottom:10px; }
+  .setup-input:focus { border-color:var(--accent); }
+  .setup-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
+  .setup-btn { width:100%; background:var(--accent); color:white; border:none; border-radius:10px; padding:14px; font-family:'Syne',sans-serif; font-size:14px; font-weight:700; cursor:pointer; }
+  .setup-btn:hover { background:#3a9e68; }
+  .setup-note { font-size:10px; color:var(--muted); font-family:'Space Mono',monospace; margin-bottom:14px; padding:8px 12px; background:rgba(255,255,255,0.03); border-radius:8px; line-height:1.7; text-align:left; }
+
+  .copyright { text-align:center; margin-top:16px; font-size:10px; color:var(--muted); font-family:'Space Mono',monospace; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <div class="brand-logo"><div class="logo-q">Q</div></div>
+    <div class="brand-name">ROBERT QUINN LTD</div>
+    <div class="brand-sub">GA FORMS · SAFETY MANAGEMENT</div>
+  </div>
+
+  <div class="card">
+    <div class="prog" id="prog-dots">
+      <div class="prog-dot on" id="p0"></div>
+      <div class="prog-dot" id="p1"></div>
+      <div class="prog-dot" id="p2"></div>
+    </div>
+
+    <!-- SETUP: first time only -->
+    <div id="step-setup" style="display:none;">
+      <div class="setup-box">
+        <div style="font-size:36px;margin-bottom:10px;">🏗️</div>
+        <div class="setup-title">First Time Setup</div>
+        <div class="setup-sub">Create your first site and admin account to get started.</div>
+        <input class="setup-input" id="ss-site" type="text" placeholder="Site name  (e.g. Dublin Road Project)">
+        <input class="setup-input" id="ss-addr" type="text" placeholder="Site address  (e.g. Dublin, Ireland)">
+        <div class="setup-grid">
+          <input class="setup-input" id="ss-name" type="text" placeholder="Your full name" style="margin-bottom:0;">
+          <input class="setup-input" id="ss-pin"  type="text" placeholder="Your PIN (4–6 digits)" maxlength="6" inputmode="numeric" style="margin-bottom:0;">
+        </div>
+        <div class="setup-note">You will be set up as <strong style="color:var(--accent);">Admin</strong>. Add more sites and users from the Admin Panel after logging in.</div>
+        <button class="setup-btn" onclick="runSetup()">Create Site & Login →</button>
+        <div class="err" id="setup-err"></div>
+      </div>
+    </div>
+
+    <!-- STEP 1: SITE -->
+    <div id="step-site" style="display:none;">
+      <div class="step-lbl">SELECT SITE</div>
+      <div id="last-site-hint"></div>
+      <input class="site-search" id="site-search" type="text" placeholder="🔍  Search sites..." oninput="filterSites(this.value)" autocomplete="off">
+      <div class="site-list" id="site-list"></div>
+    </div>
+
+    <!-- STEP 2: WHO ARE YOU -->
+    <div id="step-who" style="display:none;">
+      <div id="chip-who"></div>
+      <div class="step-lbl">WHO ARE YOU?</div>
+      <div class="path-grid">
+        <div class="path-btn" onclick="choosePath('staff')">
+          <div class="path-icon">👤</div>
+          <div class="path-title">Staff</div>
+          <div class="path-desc">Manager, supervisor, safety officer</div>
+        </div>
+        <div class="path-btn" onclick="choosePath('operator')">
+          <div class="path-icon">👷</div>
+          <div class="path-title">Operator</div>
+          <div class="path-desc">Filling an inspection form</div>
+        </div>
+      </div>
+      <div class="back-link" onclick="goStep(1)">← Back to sites</div>
+    </div>
+
+    <!-- STEP 3a: STAFF — pick name then PIN -->
+    <div id="step-staff" style="display:none;">
+      <div id="chip-staff"></div>
+      <div class="step-lbl">YOUR NAME</div>
+      <input class="name-big" id="staff-name-input" type="text" placeholder="Start typing your name..." autocomplete="off" oninput="filterStaff(this.value)" autocorrect="off">
+      <div class="suggestions" id="staff-suggestions"></div>
+      <div class="back-link" onclick="goStep(2)">← Back</div>
+    </div>
+
+    <!-- STEP 3b: OPERATOR — type name + site PIN -->
+    <div id="step-operator" style="display:none;">
+      <div id="chip-operator"></div>
+      <div id="op-site-banner" style="display:none;background:rgba(46,125,82,0.12);border:1px solid rgba(46,125,82,0.3);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--accent);font-family:'Space Mono',monospace;text-align:center;"></div>
+      <div class="step-lbl">YOUR NAME</div>
+      <input class="name-big" id="op-name-input" type="text" placeholder="Type your full name..." autocomplete="off" autocorrect="off">
+      <div class="back-link" style="margin-bottom:14px;" onclick="goStep(2)">← Back</div>
+      <div class="step-lbl" id="op-pin-lbl">SITE ACCESS PIN</div>
+      <div class="op-hint" id="op-hint">Enter the operator PIN for this site.<br>Ask your supervisor if you don't have it.</div>
+      <div class="pin-row" id="op-dots">
+        <div class="dot" id="od0"></div><div class="dot" id="od1"></div>
+        <div class="dot" id="od2"></div><div class="dot" id="od3"></div>
+      </div>
+      <div class="err" id="op-err"></div>
+      <div class="numpad">
+        <button class="num-btn" onclick="opDigit('1')">1</button>
+        <button class="num-btn" onclick="opDigit('2')">2</button>
+        <button class="num-btn" onclick="opDigit('3')">3</button>
+        <button class="num-btn" onclick="opDigit('4')">4</button>
+        <button class="num-btn" onclick="opDigit('5')">5</button>
+        <button class="num-btn" onclick="opDigit('6')">6</button>
+        <button class="num-btn" onclick="opDigit('7')">7</button>
+        <button class="num-btn" onclick="opDigit('8')">8</button>
+        <button class="num-btn" onclick="opDigit('9')">9</button>
+        <button class="num-btn del" onclick="opDel()">⌫</button>
+        <button class="num-btn" onclick="opDigit('0')">0</button>
+        <button class="num-btn go" id="op-go" onclick="tryOpLogin()" disabled>GO</button>
+      </div>
+    </div>
+
+    <!-- STEP 4: STAFF PIN -->
+    <div id="step-pin" style="display:none;">
+      <div id="chip-pin"></div>
+      <div class="step-lbl">ENTER YOUR PIN</div>
+      <div class="pin-row" id="pin-dots">
+        <div class="dot" id="d0"></div><div class="dot" id="d1"></div>
+        <div class="dot" id="d2"></div><div class="dot" id="d3"></div>
+        <div class="dot" id="d4" style="display:none;"></div>
+        <div class="dot" id="d5" style="display:none;"></div>
+      </div>
+      <div class="err" id="pin-err"></div>
+      <div class="numpad">
+        <button class="num-btn" onclick="digit('1')">1</button>
+        <button class="num-btn" onclick="digit('2')">2</button>
+        <button class="num-btn" onclick="digit('3')">3</button>
+        <button class="num-btn" onclick="digit('4')">4</button>
+        <button class="num-btn" onclick="digit('5')">5</button>
+        <button class="num-btn" onclick="digit('6')">6</button>
+        <button class="num-btn" onclick="digit('7')">7</button>
+        <button class="num-btn" onclick="digit('8')">8</button>
+        <button class="num-btn" onclick="digit('9')">9</button>
+        <button class="num-btn del" onclick="delDigit()">⌫</button>
+        <button class="num-btn" onclick="digit('0')">0</button>
+        <button class="num-btn go" id="btn-go" onclick="tryLogin()" disabled>GO</button>
+      </div>
+      <div class="back-link" onclick="goStep(3)">← Back to name</div>
+    </div>
+
+  </div>
+  <div class="copyright">© 2026 Robert Quinn Ltd · All rights reserved</div>
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+let selectedSite = null;
+let selectedUser = null;
+let pin = '';
+let opPin = '';
+let currentStep = 0;
+
+// ── PROGRESS ─────────────────────────────────────────────────
+function setProgress(n) {
+  for (let i = 0; i < 3; i++)
+    document.getElementById('p'+i).className = 'prog-dot' + (i < n ? ' on' : '');
+}
+
+// ── STEP ROUTER ───────────────────────────────────────────────
+const STEPS = ['setup','site','who','staff','operator','pin'];
+function goStep(n, sub) {
+  currentStep = n;
+  STEPS.forEach(s => { const el = document.getElementById('step-'+s); if(el) el.style.display='none'; });
+  if (n === 0) { document.getElementById('step-setup').style.display=''; setProgress(0); document.querySelector('.prog').style.display='none'; setTimeout(()=>document.getElementById('ss-site').focus(),150); return; }
+  document.querySelector('.prog').style.display='flex';
+  if (n === 1) { setProgress(1); document.getElementById('step-site').style.display=''; renderSites(); setTimeout(()=>document.getElementById('site-search').focus(),200); }
+  if (n === 2) { setProgress(1); document.getElementById('step-who').style.display=''; renderChip('chip-who'); }
+  if (n === 3 && sub==='staff')   { setProgress(2); document.getElementById('step-staff').style.display=''; renderChip('chip-staff'); document.getElementById('staff-name-input').value=''; filterStaff(''); setTimeout(()=>document.getElementById('staff-name-input').focus(),150); }
+  if (n === 3 && sub==='operator'){ setProgress(2); document.getElementById('step-operator').style.display=''; renderChip('chip-operator'); opPin=''; updateOpDots(); document.getElementById('op-name-input').value=''; setTimeout(()=>document.getElementById('op-name-input').focus(),150);
+    // Show which site the operator is logging into
+    const banner = document.getElementById('op-site-banner');
+    if (selectedSite && banner) { banner.textContent = '📍 Site: ' + selectedSite.name + (selectedSite.address ? ' · ' + selectedSite.address : ''); banner.style.display=''; }
+  }
+  if (n === 4) { setProgress(3); document.getElementById('step-pin').style.display=''; renderChip('chip-pin'); renderUserChip(); pin=''; updateDots(); document.getElementById('pin-err').textContent=''; const pinLen=selectedUser?.pin?.length||4; for(let i=0;i<6;i++){const d=document.getElementById('d'+i);if(d)d.style.display=i<pinLen?'':'none';} }
+}
+
+function choosePath(path) {
+  if (path === 'staff') goStep(3, 'staff');
+  else goStep(3, 'operator');
+}
+
+// ── CHIPS ─────────────────────────────────────────────────────
+function renderChip(targetId) {
+  if (!selectedSite) return;
+  document.getElementById(targetId).innerHTML = `
+    <div class="chip">
+      <span style="font-size:18px;">🏗️</span>
+      <div><div class="chip-main">${selectedSite.name}</div>
+           <div class="chip-sub">📍 ${selectedSite.address||''}</div></div>
+      <span class="chip-change" onclick="goStep(1)">change</span>
+    </div>`;
+}
+
+function renderUserChip() {
+  if (!selectedUser) return;
+  const ri = AUTH.ROLES[selectedUser.role] || { icon:'👤', color:'#888', label:selectedUser.role };
+  document.getElementById('chip-pin').innerHTML += `
+    <div class="user-chip">
+      <span style="font-size:22px;">${ri.icon}</span>
+      <div><div class="user-chip-name">${selectedUser.name}</div>
+           <div class="user-chip-role" style="color:${ri.color};">${ri.label}</div></div>
+      <span class="user-chip-change" onclick="goStep(3,'staff')">not me</span>
+    </div>`;
+}
+
+// ── STEP 1: SITES ─────────────────────────────────────────────
+function renderSites(filter) {
+  let sites = AUTH.getSites().filter(s => s.active !== false);
+  if (filter) sites = sites.filter(s =>
+    s.name.toLowerCase().includes(filter.toLowerCase()) ||
+    (s.address||'').toLowerCase().includes(filter.toLowerCase())
+  );
+  const list = document.getElementById('site-list');
+
+  // Show last-used site hint
+  const lastId = AUTH.getLastSiteId();
+  const lastSite = lastId ? AUTH.getSite(lastId) : null;
+  const hint = document.getElementById('last-site-hint');
+  if (lastSite && !filter) {
+    hint.innerHTML = `<div class="last-site-hint" style="cursor:pointer;" onclick="selectSite('${lastSite.id}')">↩ Continue on <strong>${lastSite.name}</strong></div>`;
+  } else { hint.innerHTML = ''; }
+
+  if (!sites.length) { list.innerHTML = '<div class="suggest-empty">No sites found</div>'; return; }
+  const icons = ['🏗️','🔨','⚒️','🧱','🔩','🦺','🪛','🛠️'];
+  list.innerHTML = sites.map((s,i) => {
+    const count = AUTH.getUsersForSite(s.id).filter(u=>u.active!==false).length;
+    const hasOpPin = !!s.operatorPin;
+    return `<button class="site-btn" onclick="selectSite('${s.id}')">
+      <div class="site-icon">${icons[i%icons.length]}</div>
+      <div style="flex:1;">
+        <div class="site-name">${s.name}</div>
+        <div class="site-meta">📍 ${s.address||'No address'} · ${count} staff${hasOpPin?' · 👷 operators enabled':''}</div>
+      </div>
+    </button>`;
+  }).join('');
+}
+function filterSites(v) { renderSites(v); }
+function selectSite(id) {
+  selectedSite = AUTH.getSite(id);
+  // If only 1 site skip site step — go straight to who
+  goStep(2);
+}
+
+// ── STEP 3: STAFF NAME ────────────────────────────────────────
+function filterStaff(val) {
+  const staff = AUTH.getUsersForSite(selectedSite.id)
+    .filter(u => u.active !== false && u.role !== 'operator');
+  const q = val.trim().toLowerCase();
+  const filtered = q ? staff.filter(u => u.name.toLowerCase().includes(q)) : staff;
+  const wrap = document.getElementById('staff-suggestions');
+  if (!filtered.length) {
+    wrap.innerHTML = `<div class="suggest-empty">${q?'No staff matching "'+val+'"':'No staff registered on this site'}</div>`;
+    return;
+  }
+  wrap.innerHTML = filtered.slice(0,8).map(u => {
+    const ri = AUTH.ROLES[u.role]||{icon:'👤',color:'#888',label:u.role};
+    const hi = q ? u.name.replace(new RegExp('('+q+')','gi'), '<strong style="color:var(--accent);">$1</strong>') : u.name;
+    return `<button class="suggest-btn" onclick="selectStaff('${u.id}')">
+      <span style="font-size:20px;">${ri.icon}</span>
+      <div><div class="suggest-name">${hi}</div>
+           <div class="suggest-role" style="color:${ri.color};">${ri.label}</div></div>
+    </button>`;
+  }).join('');
+}
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('staff-name-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { const f = document.querySelector('.suggest-btn'); if(f) f.click(); }
+  });
+});
+function selectStaff(id) {
+  selectedUser = AUTH.getUser(id);
+  goStep(4);
+}
+
+// ── STEP 3b: OPERATOR PIN ─────────────────────────────────────
+function opDigit(d) {
+  if (opPin.length >= 6) return;
+  opPin += d;
+  updateOpDots();
+  document.getElementById('op-err').textContent = '';
+  document.getElementById('op-go').disabled = opPin.length < 4;
+  if (opPin.length >= 4) setTimeout(tryOpLogin, 150);
+}
+function opDel() {
+  opPin = opPin.slice(0,-1);
+  updateOpDots();
+  document.getElementById('op-go').disabled = opPin.length < 4;
+}
+function updateOpDots() {
+  for (let i=0;i<4;i++) {
+    const d = document.getElementById('od'+i);
+    if(d) d.className = 'dot' + (i < opPin.length ? ' filled' : '');
+  }
+}
+function tryOpLogin() {
+  const name = document.getElementById('op-name-input').value.trim();
+  if (!name) { document.getElementById('op-err').textContent = 'Please enter your name first'; opPin=''; updateOpDots(); return; }
+  if (!AUTH.isOperatorPin(opPin, selectedSite.id)) {
+    document.getElementById('op-err').textContent = 'Incorrect site PIN — ask your supervisor';
+    for(let i=0;i<4;i++){const d=document.getElementById('od'+i);if(d){d.classList.add('error');setTimeout(()=>d.classList.remove('error'),500);}}
+    opPin=''; setTimeout(updateOpDots,50);
+    document.getElementById('op-go').disabled=true;
+    return;
+  }
+  AUTH.setOperatorSession(name, selectedSite.id);
+  redirect('operator');
+}
+
+// ── STEP 4: STAFF PIN ─────────────────────────────────────────
+function digit(d) {
+  const max = selectedUser?.pin?.length || 4;
+  if (pin.length >= max) return;
+  pin += d; updateDots();
+  document.getElementById('pin-err').textContent = '';
+  document.getElementById('btn-go').disabled = pin.length < 4;
+  if (pin.length === max) setTimeout(tryLogin, 150);
+}
+function delDigit() { pin=pin.slice(0,-1); updateDots(); document.getElementById('btn-go').disabled=pin.length<4; }
+function updateDots() {
+  const len = selectedUser?.pin?.length||4;
+  for(let i=0;i<len;i++){const d=document.getElementById('d'+i);if(d)d.className='dot'+(i<pin.length?' filled':'');}
+}
+function tryLogin() {
+  if (!selectedUser) return;
+  if (pin !== selectedUser.pin) {
+    document.getElementById('pin-err').textContent='Incorrect PIN — try again';
+    for(let i=0;i<6;i++){const d=document.getElementById('d'+i);if(d&&d.style.display!=='none'){d.classList.add('error');setTimeout(()=>d.classList.remove('error'),500);}}
+    pin=''; setTimeout(updateDots,50); document.getElementById('btn-go').disabled=true;
+    return;
+  }
+  AUTH.setSession(selectedUser, selectedSite.id);
+  redirect(selectedUser.role);
+}
+function redirect(role) {
+  const ret = params.get('return');
+  if (ret) { window.location.href = decodeURIComponent(ret); return; }
+  window.location.href = role==='operator' ? 'form.html' : 'index.html';
+}
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if (document.getElementById('step-pin').style.display!=='none') {
+    if(e.key>='0'&&e.key<='9') digit(e.key);
+    if(e.key==='Backspace') delDigit();
+    if(e.key==='Enter') tryLogin();
+  }
+  if (document.getElementById('step-operator').style.display!=='none') {
+    if(e.key>='0'&&e.key<='9') opDigit(e.key);
+    if(e.key==='Backspace') opDel();
+    if(e.key==='Enter') tryOpLogin();
+  }
+});
+
+// ── FIRST TIME SETUP ──────────────────────────────────────────
+function runSetup() {
+  const siteName = document.getElementById('ss-site').value.trim();
+  const siteAddr = document.getElementById('ss-addr').value.trim();
+  const userName = document.getElementById('ss-name').value.trim();
+  const userPin  = document.getElementById('ss-pin').value.trim();
+  const err = document.getElementById('setup-err');
+  err.textContent = '';
+  if (!siteName) { err.textContent='Site name required'; return; }
+  if (!userName) { err.textContent='Your name required'; return; }
+  if (!/^\d{4,6}$/.test(userPin)) { err.textContent='PIN must be 4–6 digits'; return; }
+  const site = AUTH.saveSite({ id:null, name:siteName, address:siteAddr });
+  const res  = AUTH.saveUser({ id:null, name:userName, role:'admin', pin:userPin, siteIds:[site.id] });
+  if (!res.ok) { err.textContent=res.error; return; }
+  AUTH.setSession(res.user, site.id);
+  window.location.href = 'index.html';
+}
+['ss-site','ss-addr','ss-name','ss-pin'].forEach(id => {
+  document.addEventListener('DOMContentLoaded', () => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('keydown', e => { if(e.key==='Enter') runSetup(); });
+  });
+});
+
+// ── INIT ──────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  DB.getFormTemplates();
+  if (AUTH.isLoggedIn()) {
+    window.location.href = AUTH.getRole()==='operator' ? 'form.html' : 'index.html';
+    return;
+  }
+
+  // Extract params — check both direct params and those inside ?return=
+  const returnUrl = params.get('return') || '';
+  let returnParams = new URLSearchParams();
+  if (returnUrl) {
+    try {
+      const decoded = decodeURIComponent(returnUrl);
+      const qIndex = decoded.indexOf('?');
+      if (qIndex >= 0) returnParams = new URLSearchParams(decoded.slice(qIndex + 1));
+    } catch(e) {}
+  }
+
+  const plantId      = params.get('plant')  || returnParams.get('plant');
+  const siteIdFromQR = params.get('site')   || returnParams.get('site');
+  const tok          = params.get('tok')    || returnParams.get('tok');
+  let pinFromURL = null;
+  if (tok) { try { const d = atob(tok); if (d.startsWith('op:')) pinFromURL = d.slice(3); } catch(e) {} }
+
+  const sites = AUTH.getSites().filter(s => s.active !== false);
+  const users = AUTH.getUsers().filter(u => u.active !== false);
+
+  // Fresh device OR site exists but has no PIN — bootstrap from QR token
+  const existingSite = siteIdFromQR ? AUTH.getSite(siteIdFromQR) : null;
+  const needsBootstrap = plantId && siteIdFromQR && (
+    (!sites.length || !users.length) ||
+    (existingSite && !existingSite.operatorPin && pinFromURL)
+  );
+  if (needsBootstrap) {
+    const snParam = params.get('sn') || returnParams.get('sn');
+    const siteName = snParam ? decodeURIComponent(snParam) : (existingSite?.name || 'Site');
+    const placeholderSite = { id: siteIdFromQR, name: siteName, address: existingSite?.address || '', operatorPin: pinFromURL, active: true };
+    AUTH.saveSite(placeholderSite);
+    selectedSite = placeholderSite;
+    goStep(3, 'operator');
+    return;
+  }
+
+  if (!sites.length || !users.length) { goStep(0); return; }
+
+  const isQR = !!(plantId);
+  if (isQR) {
+    let site = null;
+    if (plantId) site = AUTH.getSiteForPlant(plantId);
+    if (!site && siteIdFromQR) site = AUTH.getSite(siteIdFromQR);
+    if (!site) {
+      const lastId = AUTH.getLastSiteId();
+      site = (lastId && AUTH.getSite(lastId)) || sites[0];
+    }
+    selectedSite = site;
+    goStep(3, 'operator');
+    return;
+  }
+  if (sites.length === 1) { selectedSite = sites[0]; goStep(2); return; }
+  goStep(1);
+});
+</script>
+</body>
+</html>

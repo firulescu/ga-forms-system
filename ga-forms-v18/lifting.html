@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Robert Quinn Ltd — Lifting Register</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪝</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="js/data.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/firebase.js"></script>
+<style>
+  :root {
+    --bg:#060A14; --surface:#0D1421; --surface2:#111827;
+    --border:#1A2333; --border2:#243044;
+    --text:#E8EDF5; --muted:#6B7A99;
+    --accent:#2E7D52; --accent-light:#3a9e68;
+    --gold:#C9A84C; --danger:#FF4757; --warning:#FFB800;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--text); font-family:'Syne',sans-serif; min-height:100vh; }
+  body::before {
+    content:''; position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:linear-gradient(rgba(46,125,82,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(46,125,82,0.03) 1px,transparent 1px);
+    background-size:60px 60px; animation:gridMove 20s linear infinite;
+  }
+  @keyframes gridMove { from{background-position:0 0} to{background-position:60px 60px} }
+
+  .topbar {
+    position:sticky; top:0; z-index:50;
+    background:rgba(6,10,20,0.92); backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--border);
+    padding:14px 24px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+  }
+  .back-btn { background:var(--surface2); border:1px solid var(--border2); color:var(--muted); padding:8px 14px; border-radius:8px; font-family:'Space Mono',monospace; font-size:12px; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:6px; transition:all 0.2s; white-space:nowrap; }
+  .back-btn:hover { color:var(--text); border-color:var(--accent); }
+  .topbar-title { font-size:18px; font-weight:800; flex:1; min-width:120px; }
+  .btn { font-family:'Space Mono',monospace; font-size:12px; font-weight:700; padding:9px 18px; border-radius:8px; border:none; cursor:pointer; transition:all 0.2s; display:inline-flex; align-items:center; gap:7px; white-space:nowrap; }
+  .btn-primary { background:var(--accent); color:white; }
+  .btn-primary:hover { background:var(--accent-light); transform:translateY(-1px); }
+  .btn-secondary { background:transparent; color:var(--muted); border:1px solid var(--border2); }
+  .btn-secondary:hover { background:var(--surface2); color:var(--text); }
+  .btn-danger { background:var(--danger); color:white; }
+  .btn-warning { background:var(--warning); color:#060A14; }
+  .btn-sm { padding:6px 12px; font-size:11px; }
+
+  .content { padding:24px; position:relative; z-index:1; max-width:1500px; margin:0 auto; }
+
+  /* COLOUR CODE BANNER */
+  .colour-banner {
+    border-radius:16px; padding:20px 28px; margin-bottom:24px;
+    display:flex; align-items:center; gap:20px; border:2px solid;
+    transition: all 0.4s;
+  }
+  .colour-dot { width:48px; height:48px; border-radius:50%; flex-shrink:0; transition:all 0.4s; }
+  .colour-info { flex:1; }
+  .colour-title { font-size:17px; font-weight:800; }
+  .colour-sub { font-size:12px; opacity:0.75; margin-top:3px; font-family:'Space Mono',monospace; }
+  .colour-qlabel { font-family:'Space Mono',monospace; font-size:26px; font-weight:700; }
+
+  /* STATS */
+  .stats-row { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:14px; margin-bottom:24px; }
+  .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px 16px; position:relative; overflow:hidden; transition:transform 0.2s; }
+  .stat-card:hover { transform:translateY(-2px); }
+  .stat-card::after { content:''; position:absolute; bottom:0; left:0; right:0; height:3px; }
+  .stat-green::after  { background:var(--accent); }
+  .stat-gold::after   { background:var(--gold); }
+  .stat-red::after    { background:var(--danger); }
+  .stat-warn::after   { background:var(--warning); }
+  .stat-blue::after   { background:#2255AA; }
+  .stat-icon { font-size:22px; margin-bottom:8px; }
+  .stat-val  { font-family:'Space Mono',monospace; font-size:28px; font-weight:700; line-height:1; }
+  .stat-label{ font-size:10px; color:var(--muted); letter-spacing:1px; margin-top:5px; text-transform:uppercase; }
+
+  /* TOOLBAR */
+  .toolbar { display:flex; align-items:center; gap:10px; margin-bottom:20px; flex-wrap:wrap; }
+  .search-wrap { position:relative; flex:1; min-width:220px; }
+  .search-icon { position:absolute; left:13px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:14px; }
+  .form-input { width:100%; background:var(--surface2); border:1px solid var(--border2); border-radius:10px; padding:11px 16px; color:var(--text); font-family:'Syne',sans-serif; font-size:14px; transition:border-color 0.2s; }
+  .form-input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(46,125,82,0.15); }
+  select.form-input { cursor:pointer; }
+  textarea.form-input { resize:vertical; }
+  .filter-tabs { display:flex; gap:4px; background:var(--surface2); padding:4px; border-radius:10px; border:1px solid var(--border); }
+  .filter-tab { padding:6px 14px; border-radius:7px; font-size:11px; font-weight:700; cursor:pointer; color:var(--muted); border:none; background:none; font-family:'Space Mono',monospace; transition:all 0.2s; }
+  .filter-tab.active { background:var(--surface); color:var(--text); border:1px solid var(--border2); }
+  .filter-tab:hover:not(.active) { color:var(--text); }
+
+  /* TABLE */
+  .table-card { background:var(--surface); border:1px solid var(--border); border-radius:16px; overflow:hidden; }
+  .table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  table { width:100%; border-collapse:collapse; font-size:13px; min-width:860px; }
+  th { font-family:'Space Mono',monospace; font-size:10px; color:var(--muted); letter-spacing:2px; padding:12px 14px; text-align:left; border-bottom:1px solid var(--border); white-space:nowrap; background:rgba(0,0,0,0.2); }
+  td { padding:13px 14px; border-bottom:1px solid var(--border); vertical-align:middle; }
+  tr:last-child td { border-bottom:none; }
+  tr:hover td { background:rgba(255,255,255,0.02); }
+  .mono { font-family:'Space Mono',monospace; font-size:11px; color:var(--muted); }
+
+  /* COLOUR TAGS */
+  .colour-tag { display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:20px; font-size:11px; font-weight:700; font-family:'Space Mono',monospace; }
+  .ctag-green  { background:rgba(46,125,82,0.2);  color:#3a9e68; border:1px solid rgba(46,125,82,0.5); }
+  .ctag-yellow { background:rgba(201,168,76,0.2); color:#d4b560; border:1px solid rgba(201,168,76,0.5); }
+  .ctag-red    { background:rgba(204,51,51,0.2);  color:#e06060; border:1px solid rgba(204,51,51,0.5); }
+  .ctag-blue   { background:rgba(34,85,170,0.2);  color:#4477CC; border:1px solid rgba(34,85,170,0.5); }
+  .ctag-wrong  { background:rgba(255,71,87,0.15); color:var(--danger); border:1px solid rgba(255,71,87,0.4); animation:blinkWarn 2s ease-in-out infinite; }
+  @keyframes blinkWarn { 0%,100%{opacity:1;} 50%{opacity:0.55;} }
+
+  /* BADGES */
+  .badge { display:inline-flex; align-items:center; padding:3px 10px; border-radius:20px; font-size:10px; font-weight:700; letter-spacing:1px; font-family:'Space Mono',monospace; }
+  .badge-green { background:rgba(46,125,82,0.15);  color:var(--accent);  border:1px solid rgba(46,125,82,0.3); }
+  .badge-red   { background:rgba(255,71,87,0.15);  color:var(--danger);  border:1px solid rgba(255,71,87,0.3); }
+  .badge-warn  { background:rgba(255,184,0,0.15);  color:var(--warning); border:1px solid rgba(255,184,0,0.3); }
+  .badge-muted { background:rgba(107,122,153,0.15);color:var(--muted);   border:1px solid rgba(107,122,153,0.3); }
+
+  .date-ok   { color:var(--accent); }
+  .date-soon { color:var(--warning); font-weight:700; }
+  .date-over { color:var(--danger); font-weight:700; }
+
+  /* MODAL */
+  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:200; display:flex; align-items:center; justify-content:center; padding:20px; backdrop-filter:blur(6px); }
+  .modal-box { background:var(--surface); border:1px solid var(--border2); border-radius:20px; padding:28px 30px; max-width:700px; width:100%; max-height:92vh; overflow-y:auto; position:relative; box-shadow:0 40px 100px rgba(0,0,0,0.6); }
+  .modal-title { font-size:18px; font-weight:800; margin-bottom:22px; padding-right:32px; }
+  .modal-close { position:absolute; top:18px; right:18px; background:var(--surface2); border:1px solid var(--border2); color:var(--muted); font-size:16px; cursor:pointer; width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; transition:all 0.2s; }
+  .modal-close:hover { color:var(--text); border-color:var(--danger); }
+  .form-group { margin-bottom:14px; }
+  .form-label { display:block; font-size:11px; color:var(--muted); margin-bottom:6px; letter-spacing:1.5px; font-family:'Space Mono',monospace; }
+  .form-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .form-grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+  .section-label { font-size:11px; font-weight:700; color:var(--accent); letter-spacing:2px; margin:20px 0 12px; text-transform:uppercase; padding-bottom:6px; border-bottom:1px solid var(--border); }
+  .modal-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:24px; padding-top:16px; border-top:1px solid var(--border); }
+
+  /* COLOUR PICKER */
+  .colour-picker { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:4px; }
+  .cpick-item { border-radius:12px; padding:14px 10px; text-align:center; cursor:pointer; transition:all 0.2s; border:2px solid var(--border2); background:var(--surface2); user-select:none; }
+  .cpick-item:hover { transform:translateY(-2px); }
+  .cpick-item.selected { transform:translateY(-2px); }
+  .cpick-dot { width:28px; height:28px; border-radius:50%; margin:0 auto 8px; box-shadow:0 2px 8px rgba(0,0,0,0.3); }
+  .cpick-name { font-size:11px; font-family:'Space Mono',monospace; font-weight:700; }
+  .cpick-sub  { font-size:9px; color:var(--muted); margin-top:3px; }
+
+  .empty { text-align:center; padding:60px 20px; color:var(--muted); }
+  .empty-icon { font-size:48px; margin-bottom:12px; display:block; }
+
+  @media (max-width:700px) {
+    .stats-row { grid-template-columns:1fr 1fr; }
+    .form-grid2, .form-grid3, .colour-picker { grid-template-columns:1fr 1fr; }
+    .topbar-title { font-size:15px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="index.html" class="back-btn">← Dashboard</a>
+  <div class="topbar-title">🪝 Lifting Equipment Register</div>
+  <div id="role-info" style="font-size:12px;color:var(--muted);font-family:'Space Mono',monospace;"></div>
+  <button class="btn btn-secondary btn-sm" onclick="printRegister()">🖨️ Print</button>
+  <button class="btn btn-warning btn-sm" id="reset-btn" onclick="reseedData()" style="display:none;" title="Reset to demo data">🔄 Reseed</button>
+  <button class="btn btn-primary" id="add-btn" onclick="openAdd()" style="display:none;">+ Add Item</button>
+</div>
+
+<div class="content">
+
+  <!-- Colour Code Banner -->
+  <div class="colour-banner" id="colour-banner">
+    <div class="colour-dot" id="colour-dot"></div>
+    <div class="colour-info">
+      <div class="colour-title" id="colour-title">Loading...</div>
+      <div class="colour-sub" id="colour-sub"></div>
+    </div>
+    <div class="colour-qlabel" id="colour-qlabel"></div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card stat-green"><div class="stat-icon">🪝</div><div class="stat-val" id="s-total">—</div><div class="stat-label">Total Items</div></div>
+    <div class="stat-card stat-green"><div class="stat-icon">✅</div><div class="stat-val" id="s-correct">—</div><div class="stat-label">Correct Colour</div></div>
+    <div class="stat-card stat-gold"><div class="stat-icon">🏷️</div><div class="stat-val" id="s-wrong">—</div><div class="stat-label">Wrong Colour</div></div>
+    <div class="stat-card stat-warn"><div class="stat-icon">⏰</div><div class="stat-val" id="s-due">—</div><div class="stat-label">Exam Due Soon</div></div>
+    <div class="stat-card stat-red"><div class="stat-icon">🚨</div><div class="stat-val" id="s-over">—</div><div class="stat-label">Exam Overdue</div></div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" class="form-input" id="search-input" style="padding-left:38px;" placeholder="Search description, serial, category..." oninput="renderTable()">
+    </div>
+    <div class="filter-tabs">
+      <button class="filter-tab active" data-f="all"     onclick="setFilter('all')">All</button>
+      <button class="filter-tab"        data-f="wrong"   onclick="setFilter('wrong')">⚠ Wrong Colour</button>
+      <button class="filter-tab"        data-f="due"     onclick="setFilter('due')">⏰ Due Soon</button>
+      <button class="filter-tab"        data-f="overdue" onclick="setFilter('overdue')">🚨 Overdue</button>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th><th>CATEGORY</th><th>DESCRIPTION</th><th>SERIAL No.</th>
+            <th>SWL</th><th>COLOUR TAG</th><th>LAST EXAM</th><th>NEXT EXAM DUE</th>
+            <th>STATUS</th><th>ACTIONS</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+    <div id="table-empty" class="empty" style="display:none;">
+      <span class="empty-icon">🪝</span>
+      <strong>No lifting equipment found</strong><br>
+      <span style="font-size:13px;margin-top:8px;display:block;">Add items using the + Add Item button above</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal" style="display:none;">
+  <div class="modal-box" id="modal-box">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-title" id="modal-title"></div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+// Close modal on outside click
+document.getElementById('modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+let currentFilter = 'all';
+let canEdit = false;
+let editingId = null; // track which item is being edited
+
+const CATEGORIES = [
+  'Crane / Hoist','Chain Sling','Webbing Sling','Wire Rope Sling',
+  'Shackle','Hook','Eye Bolt','Beam Clamp','Spreader Beam',
+  'Lifting Beam','Chain Block','Come-Along','Load Cell','Other'
+];
+const COLOUR_HEX  = { green:'#2E7D52', yellow:'#C9A84C', red:'#CC3333', blue:'#2255AA' };
+const COLOUR_CTAG = { green:'ctag-green', yellow:'ctag-yellow', red:'ctag-red', blue:'ctag-blue' };
+
+// -------------------------------------------------------
+function setFilter(f) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-tab').forEach(t => t.classList.toggle('active', t.dataset.f === f));
+  renderTable();
+}
+
+function daysUntil(d) { return d ? Math.ceil((new Date(d) - new Date()) / 86400000) : null; }
+function fmtDate(d)   { return d ? new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—'; }
+function dateClass(d) {
+  const n = daysUntil(d);
+  if (n === null) return '';
+  return n < 0 ? 'date-over' : n <= 30 ? 'date-soon' : 'date-ok';
+}
+
+// -------------------------------------------------------
+function renderBanner() {
+  const qc = DB.getCurrentColourCode();
+  const hex = qc.hex;
+  const rgb = qc.rgb;
+  const banner = document.getElementById('colour-banner');
+  banner.style.borderColor = `rgba(${rgb},0.5)`;
+  banner.style.background   = `rgba(${rgb},0.07)`;
+  const dot = document.getElementById('colour-dot');
+  dot.style.background  = hex;
+  dot.style.boxShadow   = `0 0 24px rgba(${rgb},0.7)`;
+  document.getElementById('colour-title').textContent  = `CURRENT COLOUR — ${qc.label}`;
+  document.getElementById('colour-title').style.color  = hex;
+  document.getElementById('colour-sub').textContent    = 'All active lifting equipment must display this colour tag';
+  document.getElementById('colour-qlabel').textContent = qc.colour.toUpperCase();
+  document.getElementById('colour-qlabel').style.color = hex;
+}
+
+// -------------------------------------------------------
+function renderTable() {
+  const items = DB.getLiftingItems();
+  const qc    = DB.getCurrentColourCode();
+  const dueAlerts  = DB.getLiftingDueAlerts();
+  const overdueIds = new Set(dueAlerts.filter(a => a.status==='overdue').map(a => a.id));
+  const dueSoonIds = new Set(dueAlerts.filter(a => a.status==='due-soon').map(a => a.id));
+  const wrongIds   = new Set(items.filter(it => it.status==='active' && it.colourCode !== qc.colour).map(it => it.id));
+
+  // Stats
+  document.getElementById('s-total').textContent   = items.length;
+  document.getElementById('s-correct').textContent = items.filter(it => it.colourCode === qc.colour).length;
+  document.getElementById('s-wrong').textContent   = wrongIds.size;
+  document.getElementById('s-due').textContent     = dueSoonIds.size;
+  document.getElementById('s-over').textContent    = overdueIds.size;
+
+  const q = (document.getElementById('search-input').value || '').toLowerCase();
+  let list = [...items];
+  if (q) list = list.filter(it =>
+    [it.description, it.serialNo, it.category, it.id, it.make, it.model, it.location]
+      .some(v => (v||'').toLowerCase().includes(q))
+  );
+  if (currentFilter === 'wrong')   list = list.filter(it => wrongIds.has(it.id));
+  if (currentFilter === 'due')     list = list.filter(it => dueSoonIds.has(it.id));
+  if (currentFilter === 'overdue') list = list.filter(it => overdueIds.has(it.id));
+
+  const tbody = document.getElementById('table-body');
+  const empty = document.getElementById('table-empty');
+
+  if (list.length === 0) { tbody.innerHTML = ''; empty.style.display = ''; return; }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = list.map(it => {
+    const isWrong   = wrongIds.has(it.id);
+    const tagClass  = isWrong ? 'ctag-wrong' : (COLOUR_CTAG[it.colourCode] || '');
+    const tagDot    = COLOUR_HEX[it.colourCode] || '#6B7A99';
+    const examBadge = overdueIds.has(it.id) ? `<span class="badge badge-red">🚨 OVERDUE</span>`  :
+                      dueSoonIds.has(it.id) ? `<span class="badge badge-warn">⏰ DUE SOON</span>` :
+                                               `<span class="badge badge-green">✓ CURRENT</span>`;
+    const statusBadge = it.status === 'retired'   ? `<span class="badge badge-muted">RETIRED</span>` :
+                        it.status === 'quarantine' ? `<span class="badge badge-red">QUARANTINE</span>` :
+                                                     `<span class="badge badge-green">ACTIVE</span>`;
+    return `<tr>
+      <td class="mono" style="color:var(--accent);">${it.id}</td>
+      <td style="font-size:12px;color:var(--muted);">${it.category||'—'}</td>
+      <td>
+        <div style="font-weight:700;">${it.description}</div>
+        <div class="mono" style="font-size:10px;margin-top:2px;">${[it.make,it.model].filter(Boolean).join(' ') || ''}</div>
+      </td>
+      <td class="mono">${it.serialNo||'—'}</td>
+      <td style="font-family:'Space Mono',monospace;font-weight:700;">${it.swl||'—'} ${it.swlUnit||'kg'}</td>
+      <td>
+        <div class="colour-tag ${tagClass}">
+          <span style="width:8px;height:8px;border-radius:50%;background:${tagDot};display:inline-block;flex-shrink:0;"></span>
+          ${(it.colourCode||'—').toUpperCase()}
+        </div>
+        ${isWrong ? `<div style="font-size:10px;color:var(--danger);margin-top:4px;font-family:'Space Mono',monospace;">→ should be ${qc.colour.toUpperCase()}</div>` : ''}
+      </td>
+      <td class="mono ${dateClass(it.lastThoroughExam)}">${fmtDate(it.lastThoroughExam)}</td>
+      <td class="mono ${dateClass(it.nextThoroughExam)}">${fmtDate(it.nextThoroughExam)}</td>
+      <td>${examBadge}</td>
+      <td>
+        <div style="display:flex;gap:6px;">
+          ${canEdit ? `<button class="btn btn-secondary btn-sm" onclick="openEdit('${it.id}')" title="Edit">✏️</button>` : ''}
+          ${canEdit ? `<button class="btn btn-danger btn-sm" onclick="confirmDelete('${it.id}')" title="Delete">🗑️</button>` : ''}
+          <button class="btn btn-secondary btn-sm" onclick="viewItem('${it.id}')" title="View details">👁️</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// -------------------------------------------------------
+// COLOUR PICKER
+// -------------------------------------------------------
+let pickedColour = '';
+
+function renderColourPicker(selectedColour) {
+  const qc = DB.getCurrentColourCode();
+  pickedColour = selectedColour || qc.colour;
+  const colours = ['green','yellow','red','blue'];
+  const qLabels = { green:'Q1 Jan-Mar', yellow:'Q2 Apr-Jun', red:'Q3 Jul-Sep', blue:'Q4 Oct-Dec' };
+
+  return `<div class="colour-picker" id="colour-picker">
+    ${colours.map(c => {
+      const hex = COLOUR_HEX[c];
+      const isCurrent  = c === qc.colour;
+      const isSelected = c === pickedColour;
+      return `<div class="cpick-item ${isSelected ? 'selected' : ''}" id="cpick-${c}" onclick="pickColour('${c}')"
+        style="border-color:${isSelected ? hex : 'var(--border2)'};background:${isSelected ? `rgba(${DB.colourRgb(c)},0.15)` : 'var(--surface2)'};">
+        <div class="cpick-dot" style="background:${hex};${isSelected?`box-shadow:0 0 12px ${hex};`:''}"></div>
+        <div class="cpick-name" style="color:${isSelected?hex:'var(--muted)'};">${c.toUpperCase()}</div>
+        <div class="cpick-sub">${qLabels[c]}${isCurrent?' ✓ NOW':''}</div>
+      </div>`;
+    }).join('')}
+  </div>
+  <input type="hidden" id="f-colour" value="${pickedColour}">`;
+}
+
+function pickColour(c) {
+  pickedColour = c;
+  document.getElementById('f-colour').value = c;
+  const colours = ['green','yellow','red','blue'];
+  colours.forEach(cc => {
+    const el = document.getElementById('cpick-' + cc);
+    if (!el) return;
+    const hex = COLOUR_HEX[cc];
+    const rgb = DB.colourRgb(cc);
+    if (cc === c) {
+      el.classList.add('selected');
+      el.style.borderColor = hex;
+      el.style.background  = `rgba(${rgb},0.15)`;
+      el.querySelector('.cpick-dot').style.boxShadow = `0 0 12px ${hex}`;
+      el.querySelector('.cpick-name').style.color = hex;
+    } else {
+      el.classList.remove('selected');
+      el.style.borderColor = 'var(--border2)';
+      el.style.background  = 'var(--surface2)';
+      el.querySelector('.cpick-dot').style.boxShadow = '';
+      el.querySelector('.cpick-name').style.color = 'var(--muted)';
+    }
+  });
+}
+
+// -------------------------------------------------------
+// FORM HTML
+// -------------------------------------------------------
+function buildFormHTML(item) {
+  const v = (f, def='') => (item && item[f] !== undefined && item[f] !== null) ? item[f] : def;
+  return `
+    <div class="section-label">Item Details</div>
+    <div class="form-group">
+      <label class="form-label">CATEGORY *</label>
+      <select class="form-input" id="f-cat">
+        ${CATEGORIES.map(c => `<option value="${c}" ${v('category')===c?'selected':''}>${c}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">DESCRIPTION *</label>
+      <input type="text" class="form-input" id="f-desc" value="${v('description')}" placeholder="e.g. 2-Leg Chain Sling 2T">
+    </div>
+    <div class="form-grid2">
+      <div class="form-group"><label class="form-label">MAKE</label><input type="text" class="form-input" id="f-make" value="${v('make')}"></div>
+      <div class="form-group"><label class="form-label">MODEL</label><input type="text" class="form-input" id="f-model" value="${v('model')}"></div>
+      <div class="form-group"><label class="form-label">SERIAL NUMBER</label><input type="text" class="form-input" id="f-serial" value="${v('serialNo')}"></div>
+      <div class="form-group"><label class="form-label">YEAR OF MANUFACTURE</label><input type="text" class="form-input" id="f-year" value="${v('yearOfManufacture')}" maxlength="4" placeholder="2021"></div>
+    </div>
+    <div class="form-grid3">
+      <div class="form-group"><label class="form-label">SWL / WLL *</label><input type="number" class="form-input" id="f-swl" value="${v('swl')}" placeholder="2000" min="0"></div>
+      <div class="form-group">
+        <label class="form-label">UNIT</label>
+        <select class="form-input" id="f-swl-unit">
+          <option value="kg" ${v('swlUnit','kg')==='kg'?'selected':''}>kg</option>
+          <option value="t"  ${v('swlUnit')==='t'?'selected':''}>t</option>
+          <option value="kN" ${v('swlUnit')==='kN'?'selected':''}>kN</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">LOCATION</label><input type="text" class="form-input" id="f-loc" value="${v('location')}" placeholder="Rigging Store"></div>
+    </div>
+
+    <div class="section-label">Thorough Examination (6-Monthly Statutory)</div>
+    <div class="form-grid2">
+      <div class="form-group"><label class="form-label">LAST THOROUGH EXAM</label><input type="date" class="form-input" id="f-last-exam" value="${v('lastThoroughExam')}"></div>
+      <div class="form-group"><label class="form-label">NEXT EXAM DUE *</label><input type="date" class="form-input" id="f-next-exam" value="${v('nextThoroughExam')}"></div>
+    </div>
+    <div class="form-group"><label class="form-label">CERTIFICATE REFERENCE</label><input type="text" class="form-input" id="f-certref" value="${v('certRef')}" placeholder="CE-2026-001"></div>
+
+    <div class="section-label">Quarterly Colour Tag</div>
+    ${renderColourPicker(v('colourCode', DB.getCurrentColourCode().colour))}
+
+    <div class="section-label">Status & Notes</div>
+    <div class="form-group">
+      <label class="form-label">STATUS</label>
+      <select class="form-input" id="f-status">
+        <option value="active"     ${v('status','active')==='active'?'selected':''}>Active — in service</option>
+        <option value="retired"    ${v('status')==='retired'?'selected':''}>Retired / Withdrawn from service</option>
+        <option value="quarantine" ${v('status')==='quarantine'?'selected':''}>Quarantine — awaiting inspection</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">NOTES</label>
+      <textarea class="form-input" id="f-notes" rows="3" placeholder="Any relevant notes...">${v('notes')}</textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" type="button" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary"   type="button" id="save-btn">💾 Save Item</button>
+    </div>`;
+}
+
+function collectFormData() {
+  return {
+    category:         document.getElementById('f-cat').value,
+    description:      document.getElementById('f-desc').value.trim(),
+    make:             document.getElementById('f-make').value.trim(),
+    model:            document.getElementById('f-model').value.trim(),
+    serialNo:         document.getElementById('f-serial').value.trim(),
+    yearOfManufacture:document.getElementById('f-year').value.trim(),
+    swl:              document.getElementById('f-swl').value.trim(),
+    swlUnit:          document.getElementById('f-swl-unit').value,
+    location:         document.getElementById('f-loc').value.trim(),
+    lastThoroughExam: document.getElementById('f-last-exam').value,
+    nextThoroughExam: document.getElementById('f-next-exam').value,
+    certRef:          document.getElementById('f-certref').value.trim(),
+    colourCode:       document.getElementById('f-colour').value || DB.getCurrentColourCode().colour,
+    status:           document.getElementById('f-status').value,
+    notes:            document.getElementById('f-notes').value.trim(),
+  };
+}
+
+// -------------------------------------------------------
+// ADD / EDIT / DELETE
+// -------------------------------------------------------
+function openAdd() {
+  editingId = null;
+  document.getElementById('modal-title').textContent = '➕ Add Lifting Equipment';
+  document.getElementById('modal-body').innerHTML = buildFormHTML(null);
+  // Wire save button AFTER innerHTML is set
+  document.getElementById('save-btn').addEventListener('click', doSave);
+  document.getElementById('modal').style.display = 'flex';
+}
+
+function openEdit(id) {
+  editingId = id;
+  const item = DB.getLiftingItem(id);
+  if (!item) { UI.toast('Item not found','error'); return; }
+  document.getElementById('modal-title').textContent = `✏️ Edit — ${item.description}`;
+  document.getElementById('modal-body').innerHTML = buildFormHTML(item);
+  document.getElementById('save-btn').addEventListener('click', doSave);
+  document.getElementById('modal').style.display = 'flex';
+}
+
+function doSave() {
+  const data = collectFormData();
+  if (!data.description) { UI.toast('Description is required','error'); document.getElementById('f-desc').focus(); return; }
+  if (!data.nextThoroughExam) { UI.toast('Next Exam Due date is required','error'); document.getElementById('f-next-exam').focus(); return; }
+  if (!data.swl) { UI.toast('SWL / WLL is required','error'); document.getElementById('f-swl').focus(); return; }
+
+  const name = AUTH.getSession()?.name || 'Unknown';
+  if (editingId) {
+    DB.updateLiftingItem(editingId, data);
+    UI.toast(`${data.description} updated`, 'success');
+  } else {
+    DB.addLiftingItem(data);
+    UI.toast(`${data.description} added to register`, 'success');
+    DB.addNotification({ title:'Lifting Item Added', message:`${data.description} added by ${name}`, type:'info' });
+  }
+  closeModal();
+  renderTable();
+}
+
+function confirmDelete(id) {
+  const it = DB.getLiftingItem(id);
+  if (!confirm(`Remove "${it.description}" (${it.id}) from the register?\n\nThis cannot be undone.`)) return;
+  DB.deleteLiftingItem(id);
+  UI.toast('Item removed from register', 'warning');
+  renderTable();
+}
+
+// -------------------------------------------------------
+// VIEW DETAIL MODAL
+// -------------------------------------------------------
+function viewItem(id) {
+  const it  = DB.getLiftingItem(id);
+  const qc  = DB.getCurrentColourCode();
+  const isWrong = it.status === 'active' && it.colourCode !== qc.colour;
+  const hex = COLOUR_HEX[it.colourCode] || '#6B7A99';
+  const rgb = DB.colourRgb(it.colourCode);
+
+  const fields = [
+    ['ID', it.id], ['Category', it.category], ['Make', it.make||'—'], ['Model', it.model||'—'],
+    ['Serial No.', it.serialNo||'—'], ['Year', it.yearOfManufacture||'—'],
+    ['SWL / WLL', `${it.swl||'—'} ${it.swlUnit||'kg'}`], ['Location', it.location||'—'],
+    ['Last Exam', fmtDate(it.lastThoroughExam)], ['Next Exam Due', fmtDate(it.nextThoroughExam)],
+    ['Cert Reference', it.certRef||'—'], ['Status', (it.status||'active').toUpperCase()],
+  ];
+
+  UI.modal(`🪝 ${it.description}`,
+    `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
+      ${fields.map(([k,v2]) => `<div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:10px 12px;">
+        <div style="font-size:9px;color:var(--muted);letter-spacing:2px;font-family:'Space Mono',monospace;margin-bottom:4px;">${k}</div>
+        <div style="font-size:13px;font-weight:700;">${v2}</div>
+      </div>`).join('')}
+    </div>
+    <div style="background:rgba(${rgb},0.1);border:1px solid rgba(${rgb},0.4);border-radius:12px;padding:16px;display:flex;align-items:center;gap:14px;">
+      <div style="width:36px;height:36px;border-radius:50%;background:${hex};flex-shrink:0;box-shadow:0 0 16px rgba(${rgb},0.6);"></div>
+      <div>
+        <div style="font-weight:800;color:${hex};font-size:15px;">${(it.colourCode||'—').toUpperCase()} TAG</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px;">${isWrong ? `⚠️ Wrong — should be <strong style="color:${qc.hex};">${qc.colour.toUpperCase()}</strong> (${qc.label})` : `✓ Correct for ${qc.label}`}</div>
+      </div>
+    </div>
+    ${it.notes ? `<div style="margin-top:12px;background:rgba(255,183,0,0.08);border:1px solid rgba(255,183,0,0.25);border-radius:10px;padding:12px 14px;font-size:13px;">📝 ${it.notes}</div>` : ''}`
+  );
+}
+
+// -------------------------------------------------------
+// PRINT
+// -------------------------------------------------------
+function printRegister() {
+  const items    = DB.getLiftingItems();
+  const settings = DB.getSettings();
+  const qc       = DB.getCurrentColourCode();
+  const today    = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+  const win = window.open('','_blank');
+  const rows = items.map(it => {
+    const days = daysUntil(it.nextThoroughExam);
+    const overdue = days !== null && days < 0;
+    const dueSoon = days !== null && days <= 30 && days >= 0;
+    const hex = COLOUR_HEX[it.colourCode] || '#999';
+    return `<tr>
+      <td>${it.id}</td><td>${it.category}</td>
+      <td><strong>${it.description}</strong><br><small>${it.make||''} ${it.model||''}</small></td>
+      <td>${it.serialNo||'—'}</td>
+      <td><strong>${it.swl} ${it.swlUnit}</strong></td>
+      <td><span style="display:inline-flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:${hex};display:inline-block;"></span>${(it.colourCode||'—').toUpperCase()}</span></td>
+      <td>${it.lastThoroughExam||'—'}</td>
+      <td style="${overdue?'color:#CC0000;font-weight:bold;':dueSoon?'color:#AA6600;font-weight:bold':''}">${it.nextThoroughExam||'—'}${overdue?' ⚠ OVERDUE':dueSoon?' (DUE SOON)':''}</td>
+      <td>${it.certRef||'—'}</td>
+      <td>${(it.status||'active').toUpperCase()}</td>
+    </tr>`;
+  }).join('');
+
+  win.document.write(`<!DOCTYPE html><html><head><title>Lifting Register — ${settings.companyName}</title>
+  <style>
+    body{font-family:Arial,sans-serif;margin:30px;font-size:11px;}
+    .header{display:flex;justify-content:space-between;border-bottom:3px solid #1B5E35;padding-bottom:12px;margin-bottom:16px;}
+    .company{font-size:18px;font-weight:bold;color:#1B5E35;}
+    table{width:100%;border-collapse:collapse;}
+    th{background:#1B5E35;color:white;padding:7px 8px;text-align:left;font-size:9px;letter-spacing:1px;}
+    td{padding:6px 8px;border-bottom:1px solid #eee;vertical-align:top;}
+    tr:nth-child(even) td{background:#f9f9f9;}
+    .footer{margin-top:20px;font-size:9px;color:#999;text-align:center;border-top:1px solid #ddd;padding-top:8px;}
+    @media print{body{margin:10px;}}
+  </style></head><body>
+  <div class="header">
+    <div><div class="company">${settings.companyName}</div><h1 style="font-size:16px;margin:4px 0;">Lifting Equipment Register</h1></div>
+    <div style="text-align:right;font-size:11px;color:#666;">Site: ${settings.siteName}<br>Printed: ${today}<br>Current Colour: <strong style="color:${qc.hex};">${qc.colour.toUpperCase()}</strong> — ${qc.label}</div>
+  </div>
+  <table><tr><th>ID</th><th>CATEGORY</th><th>DESCRIPTION</th><th>SERIAL</th><th>SWL</th><th>COLOUR</th><th>LAST EXAM</th><th>NEXT EXAM</th><th>CERT REF</th><th>STATUS</th></tr>
+  ${rows}</table>
+  <div class="footer">${settings.companyName} · Lifting Equipment Register · © 2026 Robert Quinn Ltd · All Rights Reserved</div>
+  <script>setTimeout(()=>window.print(),600)<\/script></body></html>`);
+}
+
+// -------------------------------------------------------
+function closeModal() {
+  document.getElementById('modal').style.display = 'none';
+  document.getElementById('modal-body').innerHTML = '';
+  editingId = null;
+}
+
+function reseedData() {
+  if (!confirm('This will reset all lifting equipment data to demo data. Any items you added will be lost. Continue?')) return;
+  localStorage.removeItem('lifting_items');
+  UI.toast('Lifting register reseeded with demo data', 'success');
+  renderBanner();
+  renderTable();
+}
+
+// -------------------------------------------------------
+// INIT
+// -------------------------------------------------------
+document.addEventListener('DOMContentLoaded', () => {
+  if (!AUTH.isLoggedIn()) {
+    window.location.href = 'login.html?return=' + encodeURIComponent(window.location.href);
+    return;
+  }
+  const role    = AUTH.getRole();
+  const session = AUTH.getSession();
+  canEdit = ['admin','site_manager','safety_officer'].includes(role);
+  const ri = AUTH.getRoleInfo();
+  document.getElementById('role-info').textContent = `${ri?.icon||''} ${session?.name||''} · ${ri?.label||''}`;
+
+  if (canEdit) {
+    document.getElementById('add-btn').style.display   = '';
+    document.getElementById('reset-btn').style.display = '';
+  }
+
+  // Force seed if empty
+  const items = DB.getLiftingItems();
+  renderBanner();
+  renderTable();
+});
+</script>
+</body>
+</html>
