@@ -1,194 +1,83 @@
-// ============================================================
-// GA FORMS SYSTEM - Firebase Sync Layer
-// Syncs submissions, defects and notifications across devices
-// Robert Quinn Ltd © 2026
-// ============================================================
-
+// GA Forms API Sync Layer - Hetzner Server
 const FBSYNC = {
-  _base: null,
-  _siteId: null,
-  _listeners: [],
+  _base: "http://46.225.83.168:3000",
+  _siteId: "",
 
-  // Call this once on page load with your Firebase config
-  init(firebaseUrl, siteId) {
-    if (!firebaseUrl) return;
-    this._base = firebaseUrl.replace(/\/$/, '');
-    this._siteId = siteId;
-  },
+  init(url, siteId) { this._siteId = siteId; },
 
-  _url(path) {
-    return `${this._base}/${this._siteId}/${path}.json`;
-  },
-
-  isReady() {
-    return !!(this._base && this._siteId);
-  },
-
-  // ── WRITE ─────────────────────────────────────────────────
-  async push(collection, item) {
-    if (!this.isReady()) return null;
-    try {
-      const res = await fetch(this._url(collection), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(item)
-      });
-      const data = await res.json();
-      return data?.name || null; // Firebase push key
-    } catch(e) {
-      console.warn('Firebase push failed:', e);
-      return null;
-    }
-  },
-
-  async set(collection, key, item) {
-    if (!this.isReady()) return false;
-    try {
-      await fetch(`${this._base}/${this._siteId}/${collection}/${key}.json`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(item)
-      });
-      return true;
-    } catch(e) {
-      console.warn('Firebase set failed:', e);
-      return false;
-    }
-  },
-
-  async delete(collection, key) {
-    if (!this.isReady()) return false;
-    try {
-      await fetch(`${this._base}/${this._siteId}/${collection}/${key}.json`, {
-        method: 'DELETE'
-      });
-      return true;
-    } catch(e) {
-      console.warn('Firebase delete failed:', e);
-      return false;
-    }
-  },
-
-  // ── READ ──────────────────────────────────────────────────
-  async getAll(collection) {
-    if (!this.isReady()) return [];
-    try {
-      const res = await fetch(this._url(collection));
-      const data = await res.json();
-      if (!data) return [];
-      // Firebase returns object with push keys — convert to array
-      return Object.entries(data).map(([fbKey, val]) => ({ ...val, _fbKey: fbKey }));
-    } catch(e) {
-      console.warn('Firebase read failed:', e);
-      return [];
-    }
-  },
-
-  // ── SYNC SUBMISSIONS ──────────────────────────────────────
-  async syncSubmissions() {
-    const items = await this.getAll('submissions');
-    if (!items.length) return;
-    // Merge into localStorage — add any Firebase submissions not already local
-    const key = this._siteId + ':submissions';
-    const local = (() => { try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return []; } })();
-    const localIds = new Set(local.map(s => s.id));
-    let added = 0;
-    items.forEach(item => {
-      if (!localIds.has(item.id)) {
-        local.unshift(item);
-        added++;
-      }
-    });
-    if (added > 0) {
-      local.sort((a,b) => new Date(b.submittedAt) - new Date(a.submittedAt));
-      localStorage.setItem(key, JSON.stringify(local));
-    }
-    return added;
-  },
-
-  // ── SYNC DEFECTS ──────────────────────────────────────────
-  async syncDefects() {
-    const items = await this.getAll('defects');
-    if (!items.length) return;
-    const key = this._siteId + ':defects';
-    const local = (() => { try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return []; } })();
-    const localIds = new Set(local.map(d => d.id));
-    let added = 0;
-    items.forEach(item => {
-      if (!localIds.has(item.id)) {
-        local.unshift(item);
-        added++;
-      } else {
-        // Update existing (e.g. resolved status changed)
-        const i = local.findIndex(d => d.id === item.id);
-        if (i >= 0) local[i] = { ...local[i], ...item };
-      }
-    });
-    if (added > 0 || items.some(i => local.find(l => l.id === i.id && l.status !== i.status))) {
-      localStorage.setItem(key, JSON.stringify(local));
-    }
-    return added;
-  },
-
-  // ── SYNC NOTIFICATIONS ────────────────────────────────────
-  async syncNotifications() {
-    const items = await this.getAll('notifications');
-    if (!items.length) return;
-    const key = this._siteId + ':notifications';
-    const local = (() => { try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return []; } })();
-    const localIds = new Set(local.map(n => n.id));
-    let added = 0;
-    items.forEach(item => {
-      if (!localIds.has(item.id)) {
-        local.unshift(item);
-        added++;
-      }
-    });
-    if (added > 0) {
-      local.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
-      if (local.length > 100) local.length = 100;
-      localStorage.setItem(key, JSON.stringify(local));
-    }
-    return added;
-  },
-
-  // ── PULL ALL (call on admin dashboard load) ───────────────
-  async pullAll() {
-    if (!this.isReady()) return { ok: false, reason: 'not configured' };
-    try {
-      const [subs, defs, notifs] = await Promise.all([
-        this.syncSubmissions(),
-        this.syncDefects(),
-        this.syncNotifications()
-      ]);
-      return { ok: true, submissions: subs, defects: defs, notifications: notifs };
-    } catch(e) {
-      return { ok: false, reason: e.message };
-    }
-  },
-
-  // ── WRITE SUBMISSION (call from form.html on submit) ──────
   async writeSubmission(sub) {
-    return await this.push('submissions', sub);
-  },
-
-  async writeDefect(defect) {
-    return await this.push('defects', defect);
-  },
-
-  async writeNotification(notif) {
-    return await this.push('notifications', notif);
-  },
-
-  // Update defect status (resolve)
-  async updateDefectStatus(defectId, status, resolvedBy, resolveNotes) {
-    const items = await this.getAll('defects');
-    const match = items.find(d => d.id === defectId);
-    if (match?._fbKey) {
-      await this.set('defects', match._fbKey, {
-        ...match, status, resolvedBy, resolveNotes,
-        resolvedAt: new Date().toISOString(), _fbKey: undefined
+    try {
+      await fetch(this._base + "/api/submissions", {
+        method: "POST", headers: {"Content-Type":"application/json"},
+        body: JSON.stringify(sub)
       });
-    }
+    } catch(e) { console.warn("API submission failed:", e); }
+  },
+
+  async writeNotification(n) {
+    try {
+      await fetch(this._base + "/api/notifications", {
+        method: "POST", headers: {"Content-Type":"application/json"},
+        body: JSON.stringify(n)
+      });
+    } catch(e) { console.warn("API notification failed:", e); }
+  },
+
+  async writeDefect(d) {
+    try {
+      await fetch(this._base + "/api/defects", {
+        method: "POST", headers: {"Content-Type":"application/json"},
+        body: JSON.stringify(d)
+      });
+    } catch(e) { console.warn("API defect failed:", e); }
+  },
+
+  async pullAll(siteId) {
+    const sid = siteId || this._siteId || "";
+    try {
+      const [subs, notifs, defects] = await Promise.all([
+        fetch(this._base + "/api/submissions?site_id=" + sid).then(r=>r.json()),
+        fetch(this._base + "/api/notifications?site_id=" + sid).then(r=>r.json()),
+        fetch(this._base + "/api/defects?site_id=" + sid).then(r=>r.json())
+      ]);
+      if (Array.isArray(subs)) DB.set("submissions", subs);
+      if (Array.isArray(notifs)) DB.set("notifications", notifs);
+      if (Array.isArray(defects)) DB.set("defects", defects);
+      return { subs, notifs, defects };
+    } catch(e) { console.warn("API pull failed:", e); return {}; }
+  },
+
+  async pushSite(site) {
+    try {
+      await fetch(this._base + "/api/sites", {
+        method: "POST", headers: {"Content-Type":"application/json"},
+        body: JSON.stringify(site)
+      });
+    } catch(e) { console.warn("API site push failed:", e); }
+  },
+
+  async pushPlant(plant) {
+    try {
+      await fetch(this._base + "/api/plants", {
+        method: "POST", headers: {"Content-Type":"application/json"},
+        body: JSON.stringify(plant)
+      });
+    } catch(e) { console.warn("API plant push failed:", e); }
+  },
+
+  async pullSites() {
+    try {
+      const sites = await fetch(this._base + "/api/sites").then(r=>r.json());
+      if (Array.isArray(sites) && sites.length > 0) DB.set("sites", sites);
+      return sites;
+    } catch(e) { return []; }
+  },
+
+  async pullPlants(siteId) {
+    try {
+      const plants = await fetch(this._base + "/api/plants?site_id=" + (siteId||"")).then(r=>r.json());
+      if (Array.isArray(plants) && plants.length > 0) DB.set("plants", plants);
+      return plants;
+    } catch(e) { return []; }
   }
 };
