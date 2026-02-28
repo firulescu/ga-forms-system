@@ -898,8 +898,9 @@ function loSubmit() {
     return;
   }
 
-  // Try site operator PIN
-  if (AUTH.isOperatorPin(loPin, loSiteId)) {
+  // Try site operator PIN (also accept QR-embedded tok= PIN)
+  const tokPin = (() => { try { const d = atob(params.get('tok')||''); return d.startsWith('op:') ? d.split(':')[1] : null; } catch(e) { return null; } })();
+  if (AUTH.isOperatorPin(loPin, loSiteId) || (tokPin && loPin === tokPin)) {
     AUTH.setOperatorSession(name, loSiteId);
     localStorage.setItem('ga_last_op_name', name);
     localStorage.setItem('ga_last_site', loSiteId);
