@@ -869,8 +869,9 @@ function renderPlantCards(plants) {
           <div class="plant-location">📍 ${p.location}</div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-          ${UI.badge(p.type, '#7B61FF')}
-          <div style="width:10px;height:10px;border-radius:50%;background:${color};box-shadow:0 0 8px ${color};margin-top:4px;"></div>
+          ${UI.badge(p.type || 'General Plant', '#7B61FF')}
+          ${p.formType ? `<span style="font-size:9px;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:1px;">${p.formType}</span>` : ''}
+          <div style="width:10px;height:10px;border-radius:50%;background:${color};box-shadow:0 0 8px ${color};margin-top:2px;"></div>
         </div>
       </div>
       ${p.outOfService ? `<div style="background:rgba(255,71,87,0.1);border:1px solid rgba(255,71,87,0.3);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:var(--danger);font-weight:700;">🚫 OUT OF SERVICE — ${p.oosReason||'Reason not specified'}</div>` : ''}
@@ -943,51 +944,69 @@ function viewPlant(id) {
   );
 }
 
+// Plant type → formType + icon mapping
+const PLANT_TYPES = [
+  { label:'Scissor Lift / MEWP',   formType:'GA2-MEWP',  icon:'🔼', hint:'Scissor lifts, boom lifts, cherry pickers' },
+  { label:'Excavator',             formType:'GA2-EXC',   icon:'🔵', hint:'Tracked and wheeled excavators' },
+  { label:'Dumper',                formType:'GA2-DMP',   icon:'🚛', hint:'Forward tip and swivel skip dumpers' },
+  { label:'Mobile Crane',          formType:'GA2-CRANE', icon:'🏗️', hint:'Truck, all-terrain or crawler cranes' },
+  { label:'Telehandler',           formType:'GA2-TELEH', icon:'🚜', hint:'Telescopic handlers' },
+  { label:'Generator',             formType:'GA2-GEN',   icon:'⚡', hint:'Diesel generators and power packs' },
+  { label:'Compressor',            formType:'GA2-COMP',  icon:'💨', hint:'Air compressors and hydraulic power packs' },
+  { label:'Formwork / Falsework',  formType:'GA2-FWORK', icon:'🧱', hint:'Formwork and falsework structures' },
+  { label:'Other / General Plant', formType:null,        icon:'⚙️', hint:'GA3 hazard assessment and GA4 maintenance only' },
+];
+
 function openAddPlantModal(existing = null) {
-  const plant = existing || { id: '', name: '', location: '', type: 'Generator', photo: '⚡' };
-  const types = ['Generator', 'Compressor', 'Lifting', 'Mobile Plant', 'Pressure Vessel', 'Elevated Work', 'Pump', 'Conveyor', 'Other'];
-  const emojis = ['⚡','💨','🏗️','🚛','🔵','🔼','⚙️','🔧','🏭','🛢️'];
+  const plant = existing || { id:'', name:'', location:'', formType:null, photo:'⚙️' };
+  const currentType = PLANT_TYPES.find(t => t.formType === plant.formType) || PLANT_TYPES[PLANT_TYPES.length-1];
+
   UI.modal(
     existing ? '✏️ Edit Plant' : '➕ Add New Plant',
     `<div class="form-group">
-      <label class="form-label">PLANT NAME</label>
-      <input type="text" class="form-input" id="mp-name" value="${plant.name}" placeholder="e.g. Diesel Generator A">
+      <label class="form-label">PLANT NAME *</label>
+      <input type="text" class="form-input" id="mp-name" value="${plant.name}" placeholder="e.g. Scissor Lift SL-02">
     </div>
     <div class="form-group">
-      <label class="form-label">LOCATION ON SITE</label>
-      <input type="text" class="form-input" id="mp-location" value="${plant.location}" placeholder="e.g. Building 1 - Basement">
+      <label class="form-label">LOCATION ON SITE *</label>
+      <input type="text" class="form-input" id="mp-location" value="${plant.location}" placeholder="e.g. North Yard, Level 2">
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-      <div class="form-group">
-        <label class="form-label">PLANT TYPE</label>
-        <select class="form-input form-select" id="mp-type">
-          ${types.map(t => `<option ${t===plant.type?'selected':''}>${t}</option>`).join('')}
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">ICON</label>
-        <select class="form-input form-select" id="mp-emoji">
-          ${emojis.map(e => `<option ${e===plant.photo?'selected':''}>${e}</option>`).join('')}
-        </select>
-      </div>
+    <div class="form-group">
+      <label class="form-label">PLANT TYPE *</label>
+      <select class="form-input form-select" id="mp-formtype" onchange="updatePlantIcon()">
+        ${PLANT_TYPES.map(t => `<option value="${t.formType||''}" data-icon="${t.icon}" ${t.formType===plant.formType?'selected':''}>${t.icon} ${t.label}</option>`).join('')}
+      </select>
+      <div id="mp-type-hint" style="font-size:11px;color:var(--muted);margin-top:5px;font-family:'Space Mono',monospace;">${currentType.hint}</div>
     </div>`,
     `<button onclick="UI.closeModal()" style="${UI.btnStyle('secondary')}">Cancel</button>
      <button onclick="savePlant('${plant.id}')" style="${UI.btnStyle('primary')}">${existing ? 'Save Changes' : 'Add Plant'}</button>`
   );
 }
 
+function updatePlantIcon() {
+  const sel  = document.getElementById('mp-formtype');
+  const opt  = sel.options[sel.selectedIndex];
+  const type = PLANT_TYPES.find(t => (t.formType||'') === sel.value);
+  if (type) document.getElementById('mp-type-hint').textContent = type.hint;
+}
+
 function savePlant(existingId) {
-  const name = document.getElementById('mp-name').value.trim();
+  const name     = document.getElementById('mp-name').value.trim();
   const location = document.getElementById('mp-location').value.trim();
-  const type = document.getElementById('mp-type').value;
-  const photo = document.getElementById('mp-emoji').value;
-  if (!name || !location) { UI.toast('Please fill in all fields', 'error'); return; }
+  const sel      = document.getElementById('mp-formtype');
+  const formTypeVal = sel.value || null;
+  const plantTypeObj = PLANT_TYPES.find(t => (t.formType||'') === (formTypeVal||'')) || PLANT_TYPES[PLANT_TYPES.length-1];
+  const photo    = plantTypeObj.icon;
+  const type     = plantTypeObj.label;
+
+  if (!name || !location) { UI.toast('Name and location are required', 'error'); return; }
+
   if (existingId) {
-    DB.updatePlant(existingId, { name, location, type, photo });
+    DB.updatePlant(existingId, { name, location, type, formType: formTypeVal, photo });
     UI.toast('Plant updated', 'success');
   } else {
-    const p = DB.addPlant({ name, location, type, photo });
-    DB.addNotification({ title: 'Plant Added', message: `${name} added to register`, type: 'info' });
+    DB.addPlant({ name, location, type, formType: formTypeVal, photo });
+    DB.addNotification({ title:'Plant Added', message:`${name} added to register`, type:'info' });
     UI.toast('Plant added to register', 'success');
   }
   UI.closeModal();

@@ -388,15 +388,32 @@ function selectPlant(id) {
 }
 
 function renderFormOptions() {
-  const templates = DB.getFormTemplates();
-  const opts = document.getElementById('form-options');
-  const colors = { GA2: '#00C896', GA3: '#FF6B35', GA4: '#7B61FF' };
+  // Only show forms relevant to this plant type
+  const plant     = state.plant;
+  const templates = plant ? DB.getFormsForPlant(plant) : DB.getFormTemplates();
+  const opts      = document.getElementById('form-options');
+
+  // Auto-select the primary GA2 form if only one GA2 and none selected yet
+  if (!state.formId) {
+    const primary = templates.find(t => t.id.startsWith('GA2'));
+    if (primary) { state.formId = primary.id; state.template = primary; document.getElementById('btn-next-select').disabled = false; }
+  }
+
   opts.innerHTML = templates.map(t => {
-    const totalItems = t.sections.reduce((sum, s) => sum + s.items.length, 0);
-    return `<div class="form-option ${state.formId === t.id ? 'selected' : ''}" 
-                 style="border-color:${state.formId === t.id ? colors[t.id]||'var(--accent)' : 'var(--border)'};"
+    const totalItems = t.sections.reduce((sum,s) => sum + s.items.length, 0);
+    const colorMap   = { 'GA2-MEWP':'#00C896','GA2-EXC':'#00C896','GA2-DMP':'#00C896','GA2-CRANE':'#00C896','GA2-GEN':'#00C896','GA2-COMP':'#00C896','GA2-FWORK':'#00C896','GA2-TELEH':'#00C896','GA3':'#FF6B35','GA4':'#7B61FF','GL1':'#CC3333' };
+    const col        = colorMap[t.id] || 'var(--accent)';
+    const isSelected = state.formId === t.id;
+    // Badge label: GA2 series → show "DAILY", GA3 → "WEEKLY", GA4 → "SERVICE", GL1 → "PRE-LIFT"
+    const badge = t.id.startsWith('GA2') ? 'DAILY' : t.id === 'GA3' ? 'WEEKLY' : t.id === 'GA4' ? 'SERVICE' : t.id === 'GL1' ? 'PRE-LIFT' : '';
+    const badgeHtml = badge ? `<span style="font-size:9px;letter-spacing:1px;background:rgba(255,255,255,0.06);padding:2px 7px;border-radius:4px;color:var(--muted);font-family:'Space Mono',monospace;">${badge}</span>` : '';
+    return `<div class="form-option ${isSelected ? 'selected' : ''}"
+                 style="border-color:${isSelected ? col : 'var(--border)'};"
                  onclick="selectForm('${t.id}')">
-      <div class="form-option-id" style="color:${colors[t.id]||'var(--accent)'};">${t.id}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+        <div class="form-option-id" style="color:${col};">${t.id}</div>
+        ${badgeHtml}
+      </div>
       <div class="form-option-name">${t.name}</div>
       <div class="form-option-desc">${t.description}</div>
       <div class="form-meta">

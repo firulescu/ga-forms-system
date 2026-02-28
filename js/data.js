@@ -7,12 +7,16 @@ const DB = {
   get(key) {
     try { return JSON.parse(localStorage.getItem(key)); } catch { return null; }
   },
+  // Site-scoped helpers — prefix all site data with siteId
+  _sk(k)   { const sid = (typeof AUTH!=='undefined') ? AUTH.getSiteId() : null; return sid ? sid + ':' + k : k; },
+  sget(k)  { return this.get(this._sk(k)); },
+  sset(k,v){ this.set(this._sk(k), v); },
   set(key, val) {
     localStorage.setItem(key, JSON.stringify(val));
   },
   // Force-seed: runs seed if key missing OR array is empty
   getOrSeed(key, seedFn) {
-    const val = this.get(key);
+    const val = this.sget(key);
     if (!val || (Array.isArray(val) && val.length === 0)) return seedFn.call(this);
     return val;
   },
@@ -20,15 +24,16 @@ const DB = {
   // ============================================================
   // PLANTS
   // ============================================================
-  getPlants() { return this.getOrSeed('plants', this.seedPlants); },
+  getPlants()   { return this.getOrSeed('plants', this.seedPlants); },
+  _savePlants(p){ this.sset('plants', p); },
   seedPlants() {
     const plants = [
-      { id:'PLT-001', name:'Diesel Generator A',  location:'Building 1 - Basement', type:'Generator',       lastInspected:null, photo:'⚡' },
-      { id:'PLT-002', name:'Air Compressor Unit',  location:'Workshop Bay 2',        type:'Compressor',      lastInspected:null, photo:'💨' },
-      { id:'PLT-003', name:'Overhead Crane #1',    location:'Main Hall',             type:'Lifting',         lastInspected:null, photo:'🏗️' },
-      { id:'PLT-004', name:'Forklift FL-07',       location:'Warehouse',             type:'Mobile Plant',    lastInspected:null, photo:'🚛' },
-      { id:'PLT-005', name:'Pressure Vessel V3',   location:'Plant Room',            type:'Pressure Vessel', lastInspected:null, photo:'🔵' },
-      { id:'PLT-006', name:'Scissor Lift SL-02',   location:'Yard',                  type:'Elevated Work',   lastInspected:null, photo:'🔼' },
+      { id:'PLT-001', name:'Diesel Generator A',  location:'Building 1 - Basement', type:'Generator',       formType:'GA2-GEN',   lastInspected:null, photo:'⚡' },
+      { id:'PLT-002', name:'Air Compressor Unit',  location:'Workshop Bay 2',        type:'Compressor',      formType:'GA2-COMP',  lastInspected:null, photo:'💨' },
+      { id:'PLT-003', name:'Overhead Crane #1',    location:'Main Hall',             type:'Crane',           formType:'GA2-CRANE', lastInspected:null, photo:'🏗️' },
+      { id:'PLT-004', name:'Telehandler TH-07',    location:'Yard',                  type:'Telehandler',     formType:'GA2-TELEH', lastInspected:null, photo:'🚛' },
+      { id:'PLT-005', name:'Excavator EX-05',      location:'South Compound',        type:'Excavator',       formType:'GA2-EXC',   lastInspected:null, photo:'🔵' },
+      { id:'PLT-006', name:'Scissor Lift SL-02',   location:'Yard',                  type:'MEWP',            formType:'GA2-MEWP',  lastInspected:null, photo:'🔼' },
     ];
     this.set('plants', plants);
     return plants;
@@ -39,15 +44,15 @@ const DB = {
     plant.id = 'PLT-' + String(plants.length + 1).padStart(3,'0');
     plant.lastInspected = null;
     plants.push(plant);
-    this.set('plants', plants);
+    this._savePlants(plants);
     return plant;
   },
   updatePlant(id, data) {
     const plants = this.getPlants();
     const i = plants.findIndex(p => p.id === id);
-    if (i >= 0) { plants[i] = { ...plants[i], ...data }; this.set('plants', plants); }
+    if (i >= 0) { plants[i] = { ...plants[i], ...data }; this._savePlants(plants); }
   },
-  deletePlant(id) { this.set('plants', this.getPlants().filter(p => p.id !== id)); },
+  deletePlant(id) { this._savePlants(this.getPlants().filter(p => p.id !== id)); },
 
   // ============================================================
   // GA1 — Plant Registration / Static Safety File
@@ -132,7 +137,7 @@ const DB = {
     record.updatedAt = new Date().toISOString();
     if (i >= 0) { records[i] = { ...records[i], ...record }; }
     else { record.createdAt = new Date().toISOString(); records.push(record); }
-    this.set('ga1_records', records);
+    this._saveGA1(records);
     return record;
   },
   deleteGA1(plantId) { this.set('ga1_records', this.getGA1Records().filter(r => r.plantId !== plantId)); },
@@ -150,7 +155,8 @@ const DB = {
   // ============================================================
   // LIFTING EQUIPMENT REGISTER
   // ============================================================
-  getLiftingItems() { return this.getOrSeed('lifting_items', this.seedLifting); },
+  getLiftingItems()  { return this.getOrSeed('lifting_items', this.seedLifting); },
+  _saveLifting(l)    { this.sset('lifting_items', l); },
   seedLifting() {
     const today = new Date();
     const fmt = (offsetDays) => {
@@ -185,7 +191,7 @@ const DB = {
     item.id = 'LFT-' + String(maxNum + 1).padStart(3,'0');
     item.createdAt = new Date().toISOString();
     items.push(item);
-    this.set('lifting_items', items);
+    this._saveLifting(items);
     return item;
   },
   updateLiftingItem(id, data) {
@@ -193,7 +199,7 @@ const DB = {
     const i = items.findIndex(it => it.id === id);
     if (i >= 0) { items[i] = { ...items[i], ...data, updatedAt:new Date().toISOString() }; this.set('lifting_items', items); }
   },
-  deleteLiftingItem(id) { this.set('lifting_items', this.getLiftingItems().filter(i => i.id !== id)); },
+  deleteLiftingItem(id) { this._saveLifting(this.getLiftingItems().filter(i => i.id !== id)); },
 
   getCurrentColourCode() {
     const m = new Date().getMonth(); // 0-11
@@ -231,67 +237,490 @@ const DB = {
   getFormTemplates() { return this.getOrSeed('formTemplates', this.seedForms); },
   seedForms() {
     const forms = [
+
+      // ── GA2 SERIES: Plant-Specific Daily Pre-Start ─────────────
+
       {
-        id:'GA2', name:'GA2 — Plant Pre-Start Inspection',
-        description:'Daily pre-start safety inspection for plant and equipment',
+        id:'GA2-MEWP', name:'GA2 — MEWP / Scissor Lift Pre-Start',
+        description:'Daily pre-start inspection for Mobile Elevated Work Platforms (scissor lifts, boom lifts, cherry pickers)',
         color:'#2E7D52',
         sections:[
-          { title:'Visual Inspection', items:['No visible damage, cracks or deformations on structure','All guards and safety covers are in place and secure','No oil, fuel or fluid leaks visible','Tyres / tracks in good condition (if applicable)','Lights and warning devices operational'] },
-          { title:'Fluid Levels', items:['Engine oil level checked and within range','Coolant level checked and within range','Hydraulic fluid level checked and within range','Fuel level adequate for planned work','Battery water level checked (if applicable)'] },
-          { title:'Controls & Safety Devices', items:['All controls operate correctly and return to neutral','Emergency stop / kill switch functional','Seat belt / operator restraint present and functional','Horn / audible warning device operational','Backup alarm operational (if applicable)','Fire extinguisher present, charged and accessible'] },
-          { title:'Documentation', items:['Plant registration / certificate of inspection current','Operator holds current licence/ticket (if required)','Previous defects have been cleared or reported'] },
+          { title:'Pre-Start Visual Check', items:[
+            'Platform, guardrails and toe boards — no damage or missing components',
+            'Entry gate / chain securely closes and latches correctly',
+            'Scissor arm / boom structure — no cracks, bent pins or visible damage',
+            'All tyres in good condition, inflated, no cuts or bulges',
+            'No hydraulic fluid leaks visible under machine or on cylinder rods',
+            'Battery charge indicator shows adequate charge for planned work',
+            'Emergency stop mushroom button accessible and not damaged',
+          ]},
+          { title:'Ground Controls Check', items:[
+            'Ground control panel — all functions operate correctly',
+            'Emergency lowering function tested and operational',
+            'Ground E-stop cuts all platform power when activated',
+            'Battery isolator accessible and clearly marked',
+          ]},
+          { title:'Platform Controls Check', items:[
+            'Platform control panel — all drive and lift functions operate correctly',
+            'Controls return to neutral / off when released',
+            'Platform up/down operates smoothly — no jerking or unusual noise',
+            'Drive speed reduces correctly when platform is raised',
+            'Horn operational',
+            'Fall arrest anchor point present, secure and load-rated',
+          ]},
+          { title:'Safety Systems', items:[
+            'Tilt / gradient alarm tested — activates on slope beyond rated angle',
+            'Overload indicator / sensor tested (where fitted)',
+            'Pothole protection / outriggers deploy correctly (if applicable)',
+            'Load capacity placard clearly visible on platform',
+          ]},
+          { title:'Documentation & Housekeeping', items:[
+            'Operator holds valid IPAF / MEWP licence for this category',
+            'Plant registration and inspection certificate current',
+            'Previous defects have been cleared or formally reported to supervisor',
+            'Platform free of loose tools, materials or trip hazards',
+          ]},
         ]
       },
+
+      {
+        id:'GA2-EXC', name:'GA2 — Excavator Pre-Start',
+        description:'Daily pre-start inspection for tracked and wheeled excavators',
+        color:'#2E7D52',
+        sections:[
+          { title:'Walk-Around Visual', items:[
+            'Undercarriage — track tension correct, no missing shoes, rollers in good condition',
+            'Slew ring — no unusual movement, grease visible, securing bolts tight',
+            'Boom, dipper and bucket — no cracks in welds, pins secure, no bent teeth',
+            'Bucket teeth / cutting edge — wear acceptable, locking pins in place',
+            'Cab glass clean and undamaged — no cracks obstructing operator view',
+            'No hydraulic leaks under machine or on cylinder rods',
+            'Engine bay covers secure, no debris accumulation near exhaust',
+          ]},
+          { title:'Fluid Levels (engine off, on flat ground)', items:[
+            'Engine oil — dipstick reads within operating range',
+            'Coolant level — at correct mark in expansion bottle',
+            'Hydraulic oil level — within correct range on sight glass',
+            'Diesel fuel — sufficient for planned shift',
+            'Windscreen washer fluid topped up',
+          ]},
+          { title:'Cab & Controls', items:[
+            'Seat adjusts and locks correctly, seat belt present and latches securely',
+            'All joystick and pedal controls move freely and return to neutral',
+            'Throttle / engine speed control operates correctly',
+            'Quick-hitch / coupler lock engaged and indicator shows locked',
+            'All mirrors correctly positioned and undamaged',
+            'Working lights operational (if working in low light)',
+          ]},
+          { title:'Safety Devices', items:[
+            'Horn operational',
+            'Backup / slew alarm operational',
+            'Fire extinguisher present, charged, accessible and in date',
+            'First aid kit present in cab',
+            'Emergency exit — secondary exit from cab accessible',
+            'Proximity / overhead line warning device fitted and operational (if required)',
+          ]},
+          { title:'Documentation', items:[
+            'Operator holds current competency for this class of excavator',
+            'Plant registration and inspection certificate current',
+            'Any outstanding defects from previous shift reported to supervisor',
+          ]},
+        ]
+      },
+
+      {
+        id:'GA2-DMP', name:'GA2 — Dumper Pre-Start',
+        description:'Daily pre-start inspection for site dumpers (forward tip and swivel skip)',
+        color:'#2E7D52',
+        sections:[
+          { title:'Walk-Around Visual', items:[
+            'Skip / body — no cracks, damaged hinges or loose retaining pins',
+            'Skip tip mechanism — latches fully engage, no bent or worn components',
+            'All four tyres in good condition, inflated correctly, no cuts or sidewall damage',
+            'Axles and wheel nuts — no visible looseness, no recent impact damage',
+            'No fuel or hydraulic fluid leaks under machine',
+            'Steps, grab handles and ROPS frame — all intact and undamaged',
+          ]},
+          { title:'Fluid Levels', items:[
+            'Engine oil within operating range',
+            'Coolant at correct level',
+            'Hydraulic oil at correct level',
+            'Fuel sufficient for planned work',
+          ]},
+          { title:'Controls & Safety', items:[
+            'Seat belt fitted, retracts freely and buckle latches correctly',
+            'Foot brake holds machine on test slope — no creep or fade',
+            'Handbrake holds machine stationary on test slope',
+            'Skip tip control operates smoothly, no unexpected movement',
+            'Horn operational',
+            'Backup alarm operational',
+            'Rotating beacon / amber light operational',
+          ]},
+          { title:'Documentation', items:[
+            'Operator is competent and authorised for this dumper',
+            'Plant registration and inspection certificate current',
+            'Previous defects cleared or reported',
+          ]},
+        ]
+      },
+
+      {
+        id:'GA2-CRANE', name:'GA2 — Mobile Crane Pre-Start',
+        description:'Daily pre-start inspection for mobile cranes (truck mounted, all-terrain, crawler)',
+        color:'#2E7D52',
+        sections:[
+          { title:'Carrier / Undercarriage', items:[
+            'All tyres — correct inflation, no damage, tread acceptable (truck / AT crane)',
+            'Track tension and condition correct, no missing shoes (crawler)',
+            'Outrigger beams extend and lock correctly on all four corners',
+            'Outrigger pad storage — pads present, undamaged, correct rated capacity',
+            'All access ladders, steps and handrails secure',
+            'No fuel, oil or hydraulic leaks under carrier',
+          ]},
+          { title:'Superstructure & Boom', items:[
+            'Slew bearing — no abnormal play, slew lock released for operation',
+            'Boom sections — no cracks in chord members or lacings, all pins retained',
+            'Boom extension / fly sections — correctly stowed or assembled per manual',
+            'Load line / wire rope — no kinks, broken wires, bird-caging or corrosion',
+            'Hook block — swivel free, safety latch closes and holds, no deformation',
+            'Anti-two-block device fitted, not bypassed, activates before contact',
+          ]},
+          { title:'Fluids & Engine', items:[
+            'Engine oil within operating range',
+            'Coolant at correct level',
+            'Hydraulic oil at correct level in sight glass',
+            'Fuel sufficient for planned lifts',
+          ]},
+          { title:'Controls & Safety Devices', items:[
+            'All crane functions tested under no-load — smooth, no abnormal noise',
+            'Rated Capacity Limiter (RCL) / load moment indicator operational, not bypassed',
+            'Hoist brakes tested — drum holds load when control released',
+            'Slew brake tested and holds when applied',
+            'Boom angle and length indicator correct and readable',
+            'Anemometer / wind speed indicator fitted and reading (if required)',
+            'Emergency stop tested and operational',
+          ]},
+          { title:'Documentation', items:[
+            'Operator holds valid certification for this class of crane',
+            'Current thorough examination certificate on machine',
+            'Current load chart for this boom / jib configuration visible in cab',
+            'Lift plan reviewed and approved for first lift of shift',
+            'Previous defects reported and cleared',
+          ]},
+        ]
+      },
+
+      {
+        id:'GA2-GEN', name:'GA2 — Generator Pre-Start',
+        description:'Daily pre-start inspection for diesel generators and power packs',
+        color:'#2E7D52',
+        sections:[
+          { title:'Visual Inspection', items:[
+            'Frame and canopy — no significant damage, all panels secure',
+            'No fuel, oil or coolant leaks under generator or on floor around it',
+            'Exhaust — pipe secure, no blockage, directed away from personnel and buildings',
+            'Fuel tank cap secure, vent clear',
+            'Generator output terminals — covers in place, no exposed conductors',
+          ]},
+          { title:'Fluid Levels', items:[
+            'Engine oil — dipstick within range',
+            'Coolant level correct',
+            'Fuel level adequate for planned run time',
+            'Battery electrolyte level correct (if wet cell)',
+          ]},
+          { title:'Electrical & Controls', items:[
+            'Main circuit breaker / isolator accessible and labelled',
+            'RCD protection fitted on output circuits',
+            'Earth spike / bonding lead connected before start',
+            'Volt meter and frequency meter reading correctly after warm-up',
+            'Auto-start / ATS control panel showing healthy status (if fitted)',
+          ]},
+          { title:'Documentation', items:[
+            'Inspection certificate current',
+            'Previous defects cleared or reported',
+            'Designated competent person has verified generator is safe to energise',
+          ]},
+        ]
+      },
+
+      {
+        id:'GA2-COMP', name:'GA2 — Compressor Pre-Start',
+        description:'Daily pre-start inspection for diesel air compressors and hydraulic power packs',
+        color:'#2E7D52',
+        sections:[
+          { title:'Visual Inspection', items:[
+            'Frame and canopy — no significant damage, tow hitch and lights functional if road-towed',
+            'No oil or fuel leaks under machine',
+            'Air receiver / pressure vessel — no dents, cracks or significant corrosion',
+            'Safety relief valve — not wired shut, test pull smooth and valve re-seats',
+            'All compressed air hoses — no cuts, abrasions or damaged ferrules',
+            'Hose couplings — whip checks fitted on all hose connections above 7 bar',
+          ]},
+          { title:'Fluid Levels', items:[
+            'Engine oil within operating range',
+            'Compressor oil (screw / reciprocating) at correct level',
+            'Coolant level correct',
+            'Fuel level adequate for planned use',
+          ]},
+          { title:'Controls & Safety', items:[
+            'Pressure gauge reads zero before start, climbs to rated pressure within expected time',
+            'Automatic unloader / regulator cycles correctly',
+            'Low oil pressure shutdown tested (isolate fuel, confirm trip activates)',
+            'High temperature shutdown functional',
+            'Service valve operates correctly and holds pressure when closed',
+          ]},
+          { title:'Documentation', items:[
+            'Pressure vessel inspection certificate current and on machine',
+            'Previous defects cleared or reported',
+          ]},
+        ]
+      },
+
+      {
+        id:'GA2-FWORK', name:'GA2 — Formwork & Falsework Pre-Pour Check',
+        description:'Pre-concrete-pour inspection for formwork and falsework structures',
+        color:'#2E7D52',
+        sections:[
+          { title:'Structure & Support', items:[
+            'All vertical props at correct centres as per design drawing',
+            'Prop extensions — maximum extension not exceeded, locking pins in place',
+            'Sole plates and base plates present under all props, bearing on firm ground',
+            'Headplates and forkheads correctly seated on primary bearers',
+            'All bracing and ties installed as per design or falsework scheme',
+            'No props missing, damaged, significantly bent or wrong size',
+          ]},
+          { title:'Formwork Panels & Joints', items:[
+            'Panel faces undamaged — no significant holes, splits or warping',
+            'All panel-to-panel joints tight — no gaps exceeding 3mm',
+            'Kickers and stopends correctly fixed, sufficient strength for concrete pressure',
+            'Release agent applied evenly to all shutter faces',
+            'Waterstops installed where specified on drawing',
+          ]},
+          { title:'Ties, Anchors & Fixings', items:[
+            'Formwork ties installed at correct spacing and fully tightened',
+            'Cone spacers fully seated on tie ends',
+            'No ties showing signs of previous over-stress or necking',
+            'Anchor bolts / wall ties to permanent structure installed if required',
+          ]},
+          { title:'Pre-Pour Sign-Off', items:[
+            'Formwork engineer / supervisor has inspected and signed off structure',
+            'Reinforcement inspection signed off before closing formwork',
+            'Concrete pour rate and pour sequence agreed with foreman and pump operator',
+            'Escape routes from pour area clear for all personnel',
+            'Contact number for formwork designer available on site',
+          ]},
+        ]
+      },
+
+      {
+        id:'GA2-TELEH', name:'GA2 — Telehandler Pre-Start',
+        description:'Daily pre-start inspection for telescopic handlers (telehandlers)',
+        color:'#2E7D52',
+        sections:[
+          { title:'Walk-Around Visual', items:[
+            'All four tyres — correct inflation, no cuts, tread acceptable',
+            'Boom — no cracks in welds, pivot pins retained, no hydraulic leaks on cylinders',
+            'Carriage and forks — no cracks at heel, tips within 3% of equal height, no bending',
+            'Fork locking pins or tines fully seated and locked on carriage',
+            'Attachment — correctly pinned to carriage, locking mechanism engaged',
+            'Stabilisers / outriggers extend and lock correctly (if fitted)',
+            'Cab glass clean and undamaged, no cracks affecting operator sightlines',
+          ]},
+          { title:'Fluid Levels', items:[
+            'Engine oil within operating range',
+            'Coolant at correct level',
+            'Hydraulic oil within operating range',
+            'Fuel sufficient for planned shift',
+          ]},
+          { title:'Controls & Safety', items:[
+            'Seat belt buckles correctly, retracts freely',
+            'All joystick functions — lift, tilt, extend, retract — smooth and return to neutral',
+            'Stability / tipping load indicator operational and calibrated for fitted attachment',
+            'Forward / reverse drive controls responsive, no unexpected creep',
+            'Service brakes hold on test slope, handbrake holds stationary',
+            'Horn operational',
+            'Backup alarm operational',
+            'Rotating beacon operational',
+          ]},
+          { title:'Documentation', items:[
+            'Operator holds valid RTITB / NPORS / CPCS card for telehandler',
+            'Load chart for fitted attachment visible in cab',
+            'Plant certificate of inspection current',
+            'Previous defects cleared or reported',
+          ]},
+        ]
+      },
+
+      // ── GA3: Hazard Assessment — generic (applies to any plant) ──
       {
         id:'GA3', name:'GA3 — Plant Hazard Assessment',
-        description:'Weekly hazard identification and risk assessment for plant',
+        description:'Weekly or task-specific hazard identification and risk assessment before commencing work with plant',
         color:'#C9A84C',
         sections:[
-          { title:'Hazard Identification', items:['Struck by / caught between hazards identified','Overhead hazards (powerlines, structures) assessed','Ground conditions assessed (slopes, soft ground, holes)','Traffic management plan in place if required','Exclusion zones established and marked'] },
-          { title:'Environmental Conditions', items:['Wind speed assessed and within operational limits','Visibility adequate for safe operation','Ground stability confirmed adequate for plant weight','Weather conditions acceptable for planned work'] },
-          { title:'Risk Controls', items:['Spotter / dogman requirements assessed','Communication method established (radio, hand signals)','Load charts / capacity plates visible and consulted','Lift plan completed for critical lifts (if applicable)','Exclusion zone barriers / flagging in place','Emergency response plan discussed with crew'] },
-          { title:'Sign-Off', items:['All crew members have been briefed on hazards and controls','Supervisor has reviewed and approved commencement of work','Any residual risks recorded and accepted by all parties'] },
+          { title:'Site & Ground Conditions', items:[
+            'Ground bearing capacity assessed — no voids, recent excavations or buried services nearby',
+            'Slopes assessed — machine rated for gradient, no risk of sliding or tipping',
+            'Ground surface — firm, no soft spots or waterlogging that could cause instability',
+            'Overhead hazards identified — powerlines, structures, pipework, lighting rigs',
+            'Underground services marked — gas, water, electricity, telecoms located before dig',
+          ]},
+          { title:'People & Traffic', items:[
+            'Exclusion zone established and marked with barriers / bunting / cones',
+            'Traffic management plan in place if plant operates near site roads or public areas',
+            'Pedestrian routes separated from plant movement routes',
+            'Spotter / banksman in place where plant reversing or slewing near personnel',
+            'All workers in exclusion zone briefed on signals and emergency procedure',
+          ]},
+          { title:'Environmental & Weather', items:[
+            'Wind speed assessed — within operational limits for this plant and task',
+            'Visibility adequate for safe operation — fog, rain, glare assessed',
+            'Lighting adequate if work continues into low-light conditions',
+            'Weather forecast checked — no sudden deterioration expected during planned work',
+          ]},
+          { title:'Equipment & Task', items:[
+            'Correct plant selected for the task — not improvised or undersized',
+            'Load charts / rated capacity confirmed adequate for planned loads',
+            'Lift plan completed and approved for any critical or complex lift',
+            'Emergency lowering / recovery procedure known to operator and crew',
+            'Communication method agreed — radio channel, hand signals or banksman',
+          ]},
+          { title:'Crew Briefing & Sign-Off', items:[
+            'All crew members briefed on identified hazards and controls',
+            'Roles and responsibilities assigned — operator, banksman, lift supervisor',
+            'Supervisor has reviewed conditions and approved commencement of work',
+            'Any residual risks acknowledged and accepted in writing where required',
+          ]},
         ]
       },
+
+      // ── GA4: Scheduled Maintenance ─────────────────────────────
       {
         id:'GA4', name:'GA4 — Plant Maintenance Checklist',
-        description:'Scheduled maintenance inspection record',
+        description:'Scheduled maintenance inspection — complete at manufacturer service intervals',
         color:'#7B61FF',
         sections:[
-          { title:'Engine & Drive System', items:['Air filter inspected / replaced as required','Fuel filter inspected / replaced as required','Oil filter replaced (if on maintenance schedule)','Drive belts and hoses inspected for wear','Engine mounts and fasteners checked for tightness'] },
-          { title:'Hydraulic System', items:['Hydraulic hoses and fittings inspected for leaks/damage','Hydraulic filter replaced (if on schedule)','Cylinder seals checked for leaks','Hydraulic fluid condition checked'] },
-          { title:'Structural & Mechanical', items:['All grease points lubricated','Pins and bushes inspected for wear','Bucket / attachment teeth and cutting edges inspected','Tracks / undercarriage inspected and tension correct','Structural welds inspected for cracks'] },
-          { title:'Electrical', items:['Battery terminals clean and tight','Wiring harness inspected for damage or chafing','All lights operational','Hour meter / instruments operational'] },
+          { title:'Engine & Drive System', items:[
+            'Engine oil changed — correct grade and quantity per spec',
+            'Oil filter replaced — date and hour meter reading recorded',
+            'Air filter inspected — cleaned or replaced as required',
+            'Fuel filter replaced if on schedule',
+            'Drive belts inspected for cracking, glazing or wear — replaced if within limits',
+            'Engine mounts and fasteners checked for tightness',
+            'Cooling system hoses inspected for swelling, leaks or deterioration',
+            'Coolant antifreeze concentration checked',
+          ]},
+          { title:'Hydraulic System', items:[
+            'Hydraulic oil changed if on service schedule — used oil disposed correctly',
+            'Hydraulic return filter replaced',
+            'All hydraulic hoses inspected — no abrasion, chafing or joint weeping',
+            'Cylinder rod seals checked — no weeping or blowout',
+            'Hydraulic tank breather cleaned or replaced',
+          ]},
+          { title:'Structural & Mechanical', items:[
+            'All grease nipples lubricated — correct grease grade, no clogged nipples',
+            'Pins and bushes checked for wear — replace if beyond manufacturer tolerance',
+            'All structural fasteners torque-checked at critical points',
+            'Tracks / undercarriage — tension adjusted to spec, worn pads replaced',
+            'Structural welds inspected for cracks — especially at stress risers',
+          ]},
+          { title:'Electrical & Instruments', items:[
+            'Battery terminals cleaned, coated and tight',
+            'Wiring harness inspected for chafing against chassis or hot surfaces',
+            'All lights and alarms tested operational',
+            'Hour meter, fuel gauge and warning lights functioning correctly',
+            'Earthing / bonding cables intact',
+          ]},
+          { title:'Completion', items:[
+            'Service record updated — date, hour meter, work done, parts replaced',
+            'Any defects found during service logged and notified to plant manager',
+            'Machine test-run after service — no warning lights, no unusual noise',
+            'Next service due date / hour meter reading recorded and posted on machine',
+          ]},
         ]
       },
+
+      // ── GL1: Pre-Lift (unchanged — already specific) ───────────
       {
         id:'GL1', name:'GL1 — Pre-Lift Safety Checklist',
-        description:'Pre-lift inspection and risk assessment for all lifting operations',
+        description:'Pre-lift inspection and risk assessment for all crane and lifting operations',
         color:'#CC3333',
         sections:[
-          { title:'Lifting Equipment Inspection', items:['All lifting equipment has current thorough examination certificate','Lifting equipment colour tag is correct for current quarter','SWL/WLL markings are clearly visible on all equipment','Slings, chains and accessories inspected — no damage, kinks or corrosion','Shackle pins are correctly seated and moused / secured','Hooks inspected — no deformation, throat opening within limits','Load cell or dynamometer fitted if required by lift plan'] },
-          { title:'Crane / Hoist Pre-Check', items:['Crane pre-start inspection (GA2) completed for this shift','Load charts consulted and lift is within rated capacity at required radius','Anti-two-block device tested and operational','Limit switches tested and operational','Brakes tested under no-load condition','Outrigger pads deployed and crane level (if applicable)'] },
-          { title:'Lift Zone & Exclusion', items:['Lift area inspected — no overhead obstructions or power lines within safe distance','Ground bearing capacity assessed and adequate for crane / support loads','Exclusion zone established and barriers / signage in place','All non-essential personnel cleared from lift zone','Escape routes identified in case of emergency or load failure'] },
-          { title:'Communication & Team', items:['Appointed Person / Lift Supervisor identified and on site','Rigger / Slinger holds current ticket if required by legislation','Communication method agreed by all parties (hand signals / radio)','All crew briefed on lift plan, signals and emergency procedures','Weather conditions assessed — wind speed within operational limits'] },
-          { title:'Load & Rigging', items:['Load weight confirmed and within crane capacity at required radius','Centre of gravity identified and rigging attachment point confirmed','Rigging configuration matches approved lift plan','Test lift performed to check balance before full height lift','Load secured for travel and travel route is clear and communicated'] },
+          { title:'Lifting Equipment Condition', items:[
+            'All lifting equipment has current thorough examination certificate',
+            'Colour tag on lifting equipment matches current quarter colour',
+            'SWL / WLL markings clearly visible on all equipment — not defaced or obscured',
+            'Slings — no cuts, pulls, heat damage, chemical damage or excessive wear',
+            'Chains — no stretched, cracked or deformed links, no corrosion pitting',
+            'Shackles — pin fully threaded, moused with wire or split pin, no deformation',
+            'Hooks — no deformation, throat opening within 5% of original, safety latch closes',
+          ]},
+          { title:'Crane Pre-Check', items:[
+            'Crane GA2 pre-start completed for this shift before first lift',
+            'Current load chart for this boom / jib configuration in cab',
+            'Planned lift is within rated capacity at required radius — confirmed on chart',
+            'Anti-two-block device operational and not bypassed',
+            'Hoist and derricking brakes tested under no-load',
+            'Outrigger pads deployed, crane levelled — spirit level reading within limits',
+          ]},
+          { title:'Lift Zone & Exclusion Area', items:[
+            'Lift area walked — no overhead powerlines within required safe clearance',
+            'Ground bearing capacity adequate for crane + load + dynamic factor',
+            'Exclusion zone established: minimum 1.5× load height radius from lift point',
+            'Barriers / signs / bunting in place — exclusion zone clearly visible',
+            'All non-essential personnel cleared from exclusion zone before lift',
+            'Escape routes identified in case of emergency or load shift',
+          ]},
+          { title:'Team & Communication', items:[
+            'Appointed Person / Lift Supervisor named and on site for this lift',
+            'Rigger / Slinger holds current ticket where required by legislation',
+            'Communication method agreed by all parties — radio channel or hand signal code',
+            'All crew briefed on lift plan, signals and emergency procedures',
+            'Weather conditions assessed — wind speed within operational limits for load',
+          ]},
+          { title:'Load & Rigging Configuration', items:[
+            'Load weight confirmed by weighbridge ticket, drawing or calculation',
+            'Centre of gravity assessed — rigging attachment point above CoG',
+            'Rigging configuration matches approved lift plan or standard rigging study',
+            'Test lift performed to check balance and load stability before full height',
+            'Load travel route checked — clear of obstructions, set-down area prepared',
+          ]},
         ]
       },
+
     ];
     this.set('formTemplates', forms);
     return forms;
   },
   getFormTemplate(id) { return this.getFormTemplates().find(f => f.id === id); },
+  // Map plant formType → which forms are available for that plant
+  PLANT_FORM_MAP: {
+    'GA2-MEWP':  ['GA2-MEWP', 'GA3', 'GA4'],
+    'GA2-EXC':   ['GA2-EXC',  'GA3', 'GA4'],
+    'GA2-DMP':   ['GA2-DMP',  'GA3', 'GA4'],
+    'GA2-CRANE': ['GA2-CRANE','GA3', 'GA4', 'GL1'],
+    'GA2-GEN':   ['GA2-GEN',  'GA3', 'GA4'],
+    'GA2-COMP':  ['GA2-COMP', 'GA3', 'GA4'],
+    'GA2-FWORK': ['GA2-FWORK','GA3'],
+    'GA2-TELEH': ['GA2-TELEH','GA3', 'GA4', 'GL1'],
+    'default':   ['GA3', 'GA4'],
+  },
+  getFormsForPlant(plant) {
+    const ids = this.PLANT_FORM_MAP[plant?.formType] || this.PLANT_FORM_MAP['default'];
+    return this.getFormTemplates().filter(f => ids.includes(f.id));
+  },
+
+
 
   // ============================================================
   // SUBMISSIONS
   // ============================================================
-  getSubmissions() { return this.get('submissions') || []; },
+  getSubmissions() { return this.sget('submissions') || []; },
   addSubmission(sub) {
     const subs = this.getSubmissions();
     sub.id = 'SUB-' + Date.now();
     sub.submittedAt = new Date().toISOString();
     subs.unshift(sub);
-    this.set('submissions', subs);
+    this.sset('submissions', subs);
     this.updatePlant(sub.plantId, { lastInspected: sub.submittedAt });
     return sub;
   },
@@ -305,7 +734,7 @@ const DB = {
   // SETTINGS
   // ============================================================
   getSettings() {
-    return this.get('settings') || {
+    return this.sget('settings') || {
       companyName: 'Robert Quinn Ltd',
       siteName: 'Main Construction Site',
       siteManager: 'Site Manager',
@@ -315,12 +744,12 @@ const DB = {
       dailyFormRequired: 'GA2',
     };
   },
-  saveSettings(s) { this.set('settings', s); },
+  saveSettings(s) { this.sset('settings', s); },
 
   // ============================================================
   // NOTIFICATIONS
   // ============================================================
-  getNotifications() { return this.get('notifications') || []; },
+  getNotifications() { return this.sget('notifications') || []; },
   addNotification(n) {
     const list = this.getNotifications();
     n.id = 'N-' + Date.now();
@@ -328,10 +757,54 @@ const DB = {
     n.read = false;
     list.unshift(n);
     if (list.length > 100) list.pop();
-    this.set('notifications', list);
+    this.sset('notifications', list);
   },
-  markAllRead() { this.set('notifications', this.getNotifications().map(n => ({...n, read:true}))); },
+  markAllRead() { this.sset('notifications', this.getNotifications().map(n => ({...n, read:true}))); },
   getUnreadCount() { return this.getNotifications().filter(n => !n.read).length; },
+
+  // ============================================================
+  // DEFECT TRACKER
+  // ============================================================
+  getDefects() { return this.sget('defects') || []; },
+  addDefect(defect) {
+    const defects = this.getDefects();
+    defect.id = 'DEF-' + Date.now();
+    defect.reportedAt = new Date().toISOString();
+    defect.status = 'open';
+    defects.unshift(defect);
+    this.sset('defects', defects);
+    return defect;
+  },
+  resolveDefect(id, resolvedBy, notes) {
+    const defects = this.getDefects();
+    const i = defects.findIndex(d => d.id === id);
+    if (i >= 0) {
+      defects[i].status = 'resolved';
+      defects[i].resolvedAt = new Date().toISOString();
+      defects[i].resolvedBy = resolvedBy;
+      defects[i].resolveNotes = notes || '';
+      this.sset('defects', defects);
+    }
+  },
+  getOpenDefects()     { return this.getDefects().filter(d => d.status === 'open'); },
+  getDefectsForPlant(plantId) { return this.getDefects().filter(d => d.plantId === plantId); },
+
+  // ============================================================
+  // PLANT OUT OF SERVICE
+  // ============================================================
+  setOutOfService(plantId, oos, reason, byUser) {
+    this.updatePlant(plantId, {
+      outOfService: oos,
+      oosReason: oos ? reason : '',
+      oosSetBy: oos ? byUser : '',
+      oosSetAt: oos ? new Date().toISOString() : null,
+    });
+    this.addNotification({
+      title: oos ? `🚫 Plant Out of Service — ${this.getPlant(plantId)?.name}` : `✅ Plant Returned to Service — ${this.getPlant(plantId)?.name}`,
+      message: oos ? `Marked out of service by ${byUser}. Reason: ${reason}` : `Returned to service by ${byUser}`,
+      type: oos ? 'error' : 'success',
+    });
+  },
 
   // ============================================================
   // COMPLIANCE — all checks combined
@@ -364,12 +837,11 @@ const DB = {
   // HARD RESET — clears all data and reseeds (dev/testing)
   // ============================================================
   hardReset() {
-    const keys = ['plants','ga1_records','lifting_items','formTemplates','submissions','notifications','settings','auth_pins'];
-    keys.forEach(k => localStorage.removeItem(k));
-    this.getPlants();
-    this.getGA1Records();
-    this.getLiftingItems();
-    this.getFormTemplates();
+    const sid = (typeof AUTH !== 'undefined') ? AUTH.getSiteId() : null;
+    const prefix = sid ? sid + ':' : '';
+    ['plants','ga1_records','lifting_items','submissions','notifications','settings','defects'].forEach(k => localStorage.removeItem(prefix + k));
+    ['formTemplates','sites','users'].forEach(k => localStorage.removeItem(k));
+    this.getPlants(); this.getGA1Records(); this.getLiftingItems(); this.getFormTemplates();
     return 'Reset complete. Reload the page.';
   }
 };
