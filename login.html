@@ -37,6 +37,17 @@
   .step-lbl { font-size:10px; color:var(--muted); letter-spacing:3px; font-family:'Space Mono',monospace; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
   .step-lbl::after { content:''; flex:1; height:1px; background:var(--border); }
 
+
+  /* SETUP / EMPTY STATE */
+  .setup-box { background:rgba(46,125,82,0.06); border:1px dashed rgba(46,125,82,0.3); border-radius:14px; padding:24px 20px; text-align:center; margin-bottom:12px; }
+  .setup-title { font-size:16px; font-weight:800; margin-bottom:6px; }
+  .setup-sub   { font-size:12px; color:var(--muted); margin-bottom:18px; font-family:'Space Mono',monospace; line-height:1.6; }
+  .setup-form  { text-align:left; }
+  .setup-input { width:100%; background:var(--surface2); border:1px solid var(--border2); border-radius:10px; color:var(--text); font-family:'Syne',sans-serif; font-size:14px; padding:11px 14px; outline:none; margin-bottom:10px; }
+  .setup-input:focus { border-color:var(--accent); }
+  .setup-btn   { width:100%; background:var(--accent); color:white; border:none; border-radius:10px; padding:13px; font-family:'Syne',sans-serif; font-size:14px; font-weight:700; cursor:pointer; letter-spacing:1px; }
+  .setup-btn:hover { background:#3a9e68; }
+
   /* SITE PICKER — compact for 4-10 sites */
   .site-search { width:100%; background:var(--surface2); border:1px solid var(--border2); border-radius:10px; color:var(--text); font-family:'Syne',sans-serif; font-size:14px; padding:10px 14px; margin-bottom:12px; outline:none; }
   .site-search:focus { border-color:var(--accent); }
@@ -120,6 +131,29 @@
       <div class="prog-dot" id="prog-2"></div>
     </div>
 
+
+    <!-- SETUP SCREEN: shown when no sites exist yet -->
+    <div id="step-setup" style="display:none;">
+      <div class="setup-box">
+        <div style="font-size:36px;margin-bottom:10px;">🏗️</div>
+        <div class="setup-title">First Time Setup</div>
+        <div class="setup-sub">No sites found. Create your first site and admin account to get started.</div>
+        <div class="setup-form">
+          <input class="setup-input" id="setup-site" type="text" placeholder="Site name  (e.g. Dublin Road Project)">
+          <input class="setup-input" id="setup-addr" type="text" placeholder="Site address  (e.g. Dublin, Ireland)">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+            <input class="setup-input" id="setup-name" type="text" placeholder="Your full name" style="margin-bottom:0;">
+            <input class="setup-input" id="setup-pin" type="text" placeholder="Your PIN (4 digits)" maxlength="6" inputmode="numeric" style="margin-bottom:0;">
+          </div>
+          <div style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace;margin-bottom:14px;padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:8px;line-height:1.7;">
+            You will be set up as <span style="color:var(--accent);">Admin</span>. You can add more sites and users from the Admin Panel after logging in.
+          </div>
+          <button class="setup-btn" onclick="runSetup()">Create Site & Login →</button>
+          <div id="setup-err" style="font-size:12px;color:var(--danger);text-align:center;min-height:16px;margin-top:8px;font-family:'Space Mono',monospace;"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- STEP 1: SITE -->
     <div id="step-site">
       <div class="step-lbl">SELECT SITE</div>
@@ -175,6 +209,43 @@ let selectedSite = null;
 let selectedUser = null;
 let pin = '';
 let step = 1;
+
+
+// ── FIRST-TIME SETUP ─────────────────────────────────────────
+function showSetup() {
+  document.getElementById('step-setup').style.display = '';
+  document.getElementById('step-site').style.display  = 'none';
+  document.getElementById('step-name').style.display  = 'none';
+  document.getElementById('step-pin').style.display   = 'none';
+  // hide progress dots
+  document.querySelector('.progress-dots').style.display = 'none';
+  setTimeout(() => document.getElementById('setup-site').focus(), 150);
+}
+
+function runSetup() {
+  const siteName = document.getElementById('setup-site').value.trim();
+  const siteAddr = document.getElementById('setup-addr').value.trim();
+  const userName = document.getElementById('setup-name').value.trim();
+  const userPin  = document.getElementById('setup-pin').value.trim();
+  const errEl    = document.getElementById('setup-err');
+  errEl.textContent = '';
+
+  if (!siteName)         { errEl.textContent = 'Site name is required'; return; }
+  if (!userName)         { errEl.textContent = 'Your name is required'; return; }
+  if (!/^\d{4,6}$/.test(userPin)) { errEl.textContent = 'PIN must be 4–6 digits'; return; }
+
+  // Create site
+  const site = AUTH.saveSite({ id: null, name: siteName, address: siteAddr, active: true });
+
+  // Create admin user
+  const user = { id: null, name: userName, role: 'admin', pin: userPin, siteIds: [site.id], active: true };
+  const res  = AUTH.saveUser(user);
+  if (!res.ok) { errEl.textContent = res.error; return; }
+
+  // Log in immediately
+  AUTH.setSession(res.user, site.id);
+  window.location.href = 'index.html';
+}
 
 // ── STEP MANAGEMENT ──────────────────────────────────────────
 function goToStep(n) {
@@ -379,7 +450,18 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   const sites = AUTH.getSites().filter(s => s.active !== false);
+  const users = AUTH.getUsers().filter(u => u.active !== false);
   const isQR  = (params.get('return') || '').includes('plant=') || params.has('plant');
+
+  // First-time setup: no real sites or no real users yet
+  const hasRealData = sites.length > 0 && users.length > 0;
+  if (!hasRealData) {
+    // Clear any seeded stub data
+    DB.set('sites', []);
+    DB.set('users', []);
+    showSetup();
+    return;
+  }
 
   if (isQR || sites.length === 1) {
     selectSite(sites[0].id);
