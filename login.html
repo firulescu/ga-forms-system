@@ -491,18 +491,30 @@ document.addEventListener('DOMContentLoaded', () => {
     window.location.href = AUTH.getRole()==='operator' ? 'form.html' : 'index.html';
     return;
   }
+
+  const plantId = params.get('plant');
+  const siteIdFromQR = params.get('site');
   const sites = AUTH.getSites().filter(s => s.active !== false);
   const users = AUTH.getUsers().filter(u => u.active !== false);
+
+  // Fresh device with QR scan — bootstrap minimal site data so operator can log in
+  if ((!sites.length || !users.length) && plantId && siteIdFromQR) {
+    const pinFromQR = params.get('pin') || null;
+    const placeholderSite = { id: siteIdFromQR, name: 'Site', address: '', operatorPin: pinFromQR, active: true };
+    AUTH.saveSite(placeholderSite);
+    selectedSite = placeholderSite;
+    goStep(3, 'operator');
+    return;
+  }
+
   if (!sites.length || !users.length) { goStep(0); return; }
 
-  const isQR = (params.get('return')||'').includes('plant=') || params.has('plant');
+  const isQR = params.has('plant');
   if (isQR) {
-    // QR scan — detect which site this plant belongs to
-    const plantId = params.get('plant') || (params.get('return')||'').match(/plant=([^&]+)/)?.[1];
     let site = null;
     if (plantId) site = AUTH.getSiteForPlant(plantId);
+    if (!site && siteIdFromQR) site = AUTH.getSite(siteIdFromQR);
     if (!site) {
-      // Fallback: last used site or first site
       const lastId = AUTH.getLastSiteId();
       site = (lastId && AUTH.getSite(lastId)) || sites[0];
     }

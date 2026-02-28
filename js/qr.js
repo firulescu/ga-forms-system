@@ -1,25 +1,27 @@
 // QR Code generation - wraps qrcode.js library
 const QRGen = {
+  _url(plantId, siteId) {
+    const base = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}`;
+    const pin = (typeof AUTH !== 'undefined') ? (AUTH.getSite(siteId)?.operatorPin || '') : '';
+    return `${base}form.html?plant=${plantId}&site=${siteId}&pin=${pin}`;
+  },
+
   // Generate QR code as data URL for a plant
   generate(plantId, baseUrl) {
-    const url = `${baseUrl}form.html?plant=${plantId}`;
-    return { url, qrDataUrl: null }; // Will be rendered by QRCode.js
+    const siteId = (typeof AUTH !== 'undefined') ? AUTH.getSiteId() : '';
+    const url = `${baseUrl}form.html?plant=${plantId}&site=${siteId}`;
+    return { url, qrDataUrl: null };
   },
 
   // Render QR to canvas element
-  renderToCanvas(plantId, canvasEl, baseUrl) {
-    const url = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}form.html?plant=${plantId}`;
-    if (typeof QRCode === 'undefined') {
-      console.warn('QRCode library not loaded');
-      return;
-    }
+  renderToCanvas(plantId, canvasEl) {
+    const siteId = (typeof AUTH !== 'undefined') ? AUTH.getSiteId() : '';
+    const url = this._url(plantId, siteId);
+    if (typeof QRCode === 'undefined') { console.warn('QRCode library not loaded'); return; }
     canvasEl.innerHTML = '';
     new QRCode(canvasEl, {
-      text: url,
-      width: 200,
-      height: 200,
-      colorDark: '#0A0E1A',
-      colorLight: '#ffffff',
+      text: url, width: 200, height: 200,
+      colorDark: '#0A0E1A', colorLight: '#ffffff',
       correctLevel: QRCode.CorrectLevel.H
     });
     return url;
@@ -27,8 +29,9 @@ const QRGen = {
 
   // Print QR label for a plant
   printLabel(plant) {
+    const siteId = (typeof AUTH !== 'undefined') ? AUTH.getSiteId() : '';
     const win = window.open('', '_blank');
-    const url = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}form.html?plant=${plant.id}`;
+    const url = this._url(plant.id, siteId);
     win.document.write(`
       <!DOCTYPE html>
       <html>
