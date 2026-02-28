@@ -900,7 +900,7 @@ function loSubmit() {
 
   // Try site operator PIN (also accept QR-embedded tok= PIN)
   const tokPin = (() => { try { const d = atob(params.get('tok')||''); return d.startsWith('op:') ? d.split(':')[1] : null; } catch(e) { return null; } })();
-  if (AUTH.isOperatorPin(loPin, loSiteId) || (tokPin && loPin === tokPin)) {
+  if (AUTH.isOperatorPin(loPin, loSiteId) || (urlTokPin && loPin === urlTokPin)) {
     AUTH.setOperatorSession(name, loSiteId);
     localStorage.setItem('ga_last_op_name', name);
     localStorage.setItem('ga_last_site', loSiteId);
@@ -1152,11 +1152,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const lastSite = AUTH.getLastSiteId();
     const sites = AUTH.getSites().filter(s => s.active !== false);
 
-    // Decode embedded PIN token from QR URL (if present)
+    // Store tok for server-side PIN validation only (don't pre-fill)
+    let urlTokPin = null;
     if (urlTok) {
       try {
-        const decoded = atob(urlTok); // e.g. "op:1234"
-        if (decoded.startsWith('op:')) loPin = decoded.split(':')[1];
+        const decoded = atob(urlTok);
+        if (decoded.startsWith('op:')) urlTokPin = decoded.split(':')[1];
       } catch {}
     }
 
@@ -1168,14 +1169,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const lastName = localStorage.getItem('ga_last_op_name') || '';
       if (lastName) document.getElementById('lo-name').value = lastName;
       const siteName = AUTH.getSite(urlSite)?.name || urlSite;
-      document.getElementById('lo-sub').textContent = loPin ? `Site: ${siteName} · PIN pre-filled ✓` : `Site: ${siteName}`;
-      // Update pin dots if pre-filled from tok
-      if (loPin) {
-        for (let i = 0; i < 4; i++) {
-          const d = document.getElementById('lo-d' + i);
-          if (d) { d.textContent = i < loPin.length ? '●' : '–'; d.className = 'login-pin-dot' + (i < loPin.length ? ' filled' : ''); }
-        }
-      }
+      document.getElementById('lo-sub').textContent = `Site: ${siteName}`;
     } else if (lastSite && AUTH.getSite(lastSite) && sites.length <= 1) {
       loSiteId = lastSite;
       document.getElementById('lo-step-site').style.display = 'none';
