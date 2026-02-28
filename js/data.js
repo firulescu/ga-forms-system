@@ -824,7 +824,7 @@ const DB = {
       const weeklyDone = weekSubs.some(s => s.plantId === plant.id && s.formId === 'GA3');
       const dailyDone  = weekSubs.some(s => s.plantId === plant.id && s.formId === dailyFormId && new Date(s.submittedAt).toDateString() === today);
       if (!weeklyDone) issues.push({ plantId:plant.id, plantName:plant.name, issue:'GA3 hazard assessment not completed this week', severity:'warning' });
-      if (!dailyDone)  issues.push({ plantId:plant.id, plantName:plant.name, issue:\`\${dailyFormId} pre-start not completed today\`, severity:'info' });
+      if (!dailyDone)  issues.push({ plantId:plant.id, plantName:plant.name, issue: dailyFormId + ' pre-start not completed today', severity:'info' });
     });
     this.getGA1DueAlerts().forEach(a => {
       issues.push({ plantId:a.plantId, plantName:a.plantName, issue:`GA1: ${a.message}`, severity:a.severity });
