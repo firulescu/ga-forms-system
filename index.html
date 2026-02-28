@@ -490,9 +490,15 @@
 
       <!-- ===== FORM TEMPLATES PAGE ===== -->
       <div class="page" id="page-form-templates">
-        <div style="margin-bottom:24px;">
-          <div style="font-size:13px;color:var(--muted);">Manage form checklists. Templates define what operators see when filling a form.</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+          <div style="font-size:13px;color:var(--muted);">Manage form checklists. Upload your own Word/Excel/PDF checklist and convert it to site format.</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('import-file').click()">📂 Import Checklist</button>
+            <input type="file" id="import-file" accept=".txt,.csv,.json,.docx,.pdf" style="display:none" onchange="importChecklist(this)">
+            <button class="btn btn-primary btn-sm" onclick="openCreateTemplate()">+ New Template</button>
+          </div>
         </div>
+        <div id="import-preview" style="display:none;"></div>
         <div id="templates-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:24px;"></div>
       </div>
 
@@ -1151,9 +1157,11 @@ function renderTemplates() {
             <span style="color:${t.color};">▸</span> ${s.title} <span style="float:right;font-family:'Space Mono',monospace;">${s.items.length} items</span>
           </div>`).join('')}
         </div>
-        <div style="display:flex;gap:8px;">
-          <a href="form.html?form=${t.id}" target="_blank" class="btn btn-primary btn-sm" style="flex:1;justify-content:center;">Preview Form</a>
-          <button class="btn btn-secondary btn-sm" onclick="viewTemplate('${t.id}')">👁️ Details</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <a href="form.html?form=${t.id}" target="_blank" class="btn btn-primary btn-sm" style="flex:1;justify-content:center;">Preview</a>
+          <button class="btn btn-secondary btn-sm" onclick="viewTemplate('${t.id}')">👁️</button>
+          <button class="btn btn-secondary btn-sm" onclick="printTemplate('${t.id}')">🖨️</button>
+          ${t.custom ? `<button class="btn btn-danger btn-sm" onclick="deleteTemplate('${t.id}')">🗑️</button>` : ''}
         </div>
       </div>
     </div>`;
@@ -1174,6 +1182,360 @@ function viewTemplate(id) {
     </div>`;
   });
   UI.modal(`${t.id} — ${t.name}`, html);
+}
+
+// ============================================================
+// FORM TEMPLATE IMPORT & MANAGEMENT
+// ============================================================
+
+function openCreateTemplate() {
+  const role = AUTH.getRole();
+  if (!['admin','project_manager','site_manager','safety_officer'].includes(role)) {
+    UI.toast('You do not have permission to create templates','error'); return;
+  }
+  const colors = ['#2E7D52','#C9A84C','#CC3333','#7B61FF','#FF6B35','#2255AA'];
+  const html = `
+    <div class="form-group"><label class="form-label">FORM ID (e.g. GA5, RA1)</label>
+      <input type="text" class="form-input" id="t-id" placeholder="GA5" maxlength="6"></div>
+    <div class="form-group"><label class="form-label">FORM NAME *</label>
+      <input type="text" class="form-input" id="t-name" placeholder="e.g. GA5 — Equipment Handover"></div>
+    <div class="form-group"><label class="form-label">DESCRIPTION</label>
+      <input type="text" class="form-input" id="t-desc" placeholder="Brief description of this form"></div>
+    <div class="form-group"><label class="form-label">COLOUR</label>
+      <div style="display:flex;gap:8px;margin-top:4px;">
+        ${colors.map(c => `<div onclick="document.getElementById('t-color').value='${c}';document.querySelectorAll('.cpick').forEach(x=>x.style.outline='');this.style.outline='2px solid white';" class="cpick" style="width:28px;height:28px;border-radius:50%;background:${c};cursor:pointer;"></div>`).join('')}
+        <input type="hidden" id="t-color" value="${colors[0]}">
+      </div>
+    </div>
+    <div id="sections-wrap">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-size:11px;color:var(--muted);letter-spacing:2px;font-family:'Space Mono',monospace;">SECTIONS & ITEMS</span>
+        <button class="btn btn-secondary btn-sm" type="button" onclick="addTemplateSection()">+ Add Section</button>
+      </div>
+      <div id="sections-list"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" type="button" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" type="button" onclick="saveNewTemplate()">💾 Save Template</button>
+    </div>`;
+  document.getElementById('modal-title').textContent = '+ Create Form Template';
+  document.getElementById('modal-body').innerHTML = html;
+  document.getElementById('modal').style.display = 'flex';
+  addTemplateSection(); // start with one section
+}
+
+let sectionCount = 0;
+function addTemplateSection() {
+  sectionCount++;
+  const id = 's' + sectionCount;
+  const div = document.createElement('div');
+  div.id = 'sec-' + id;
+  div.style.cssText = 'background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:10px;';
+  div.innerHTML = `
+    <div style="display:flex;gap:8px;margin-bottom:8px;">
+      <input type="text" class="form-input" id="stitle-${id}" placeholder="Section title e.g. Visual Inspection" style="flex:1;">
+      <button class="btn btn-danger btn-sm" type="button" onclick="document.getElementById('sec-${id}').remove()">✕</button>
+    </div>
+    <textarea class="form-input" id="sitems-${id}" rows="4"
+      placeholder="One checklist item per line:&#10;Check oil level&#10;Inspect tyres&#10;Test horn"></textarea>`;
+  document.getElementById('sections-list').appendChild(div);
+}
+
+function saveNewTemplate() {
+  const id    = (document.getElementById('t-id').value.trim() || 'CUSTOM').toUpperCase().replace(/[^A-Z0-9]/g,'').substring(0,6);
+  const name  = document.getElementById('t-name').value.trim();
+  const desc  = document.getElementById('t-desc').value.trim();
+  const color = document.getElementById('t-color').value;
+  if (!name) { UI.toast('Form name is required','error'); return; }
+
+  const sections = [];
+  document.querySelectorAll('[id^="sec-s"]').forEach(el => {
+    const sid   = el.id.replace('sec-','');
+    const title = document.getElementById('stitle-' + sid)?.value.trim();
+    const raw   = document.getElementById('sitems-' + sid)?.value.trim();
+    if (!title || !raw) return;
+    const items = raw.split('\n').map(l=>l.trim()).filter(Boolean);
+    if (items.length) sections.push({ title, items });
+  });
+
+  if (!sections.length) { UI.toast('Add at least one section with items','error'); return; }
+
+  const templates = DB.getFormTemplates();
+  const existing  = templates.findIndex(t => t.id === id);
+  const template  = { id, name, description: desc || name, color, sections, custom: true, createdAt: new Date().toISOString() };
+
+  if (existing >= 0) {
+    if (!confirm(`A template with ID "${id}" already exists. Overwrite?`)) return;
+    templates[existing] = template;
+  } else {
+    templates.push(template);
+  }
+  DB.set('formTemplates', templates);
+  UI.toast(`Template "${id}" saved`, 'success');
+  closeModal();
+  renderTemplates();
+}
+
+function deleteTemplate(id) {
+  const t = DB.getFormTemplate(id);
+  if (!t.custom) { UI.toast('Built-in templates cannot be deleted','error'); return; }
+  if (!confirm(`Delete template "${t.name}"? This cannot be undone.`)) return;
+  const templates = DB.getFormTemplates().filter(x => x.id !== id);
+  DB.set('formTemplates', templates);
+  UI.toast('Template deleted','warning');
+  renderTemplates();
+}
+
+// ── IMPORT FROM FILE ──────────────────────────────────────────
+function importChecklist(input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = '';
+
+  const ext = file.name.split('.').pop().toLowerCase();
+  const reader = new FileReader();
+
+  reader.onload = e => {
+    let text = '';
+    if (ext === 'json') {
+      try {
+        const data = JSON.parse(e.target.result);
+        // If it already matches our template format, import directly
+        if (data.sections && data.name) {
+          previewImport([{ name: data.name, id: data.id||'IMPORT', sections: data.sections, color: data.color||'#2E7D52' }]);
+          return;
+        }
+        text = JSON.stringify(data, null, 2);
+      } catch { text = e.target.result; }
+    } else {
+      text = e.target.result;
+    }
+    const parsed = parseChecklistText(text, file.name);
+    previewImport(parsed);
+  };
+
+  if (ext === 'pdf' || ext === 'docx') {
+    // For PDF/DOCX, we can't parse binary in browser — show manual entry pre-filled
+    UI.modal('📂 Import Checklist',
+      `<p style="color:var(--muted);margin-bottom:16px;">
+        <strong>PDF / Word files</strong> cannot be read directly in the browser.<br>
+        Please copy and paste the checklist text below — one item per line, use a blank line or "Section:" to separate sections.
+      </p>
+      <textarea class="form-input" id="paste-import" rows="12" placeholder="Section: Visual Inspection&#10;Check oil level&#10;Inspect tyres&#10;Check lights&#10;&#10;Section: Documentation&#10;Operator licence present&#10;GA1 cert current"></textarea>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="parseAndPreviewPaste()">Parse & Preview →</button>
+      </div>`
+    );
+    document.getElementById('modal-title').textContent = '📂 Import — ' + file.name;
+    return;
+  }
+
+  reader.readAsText(file);
+}
+
+function parseAndPreviewPaste() {
+  const text = document.getElementById('paste-import')?.value || '';
+  const parsed = parseChecklistText(text, 'Imported Form');
+  closeModal();
+  previewImport(parsed);
+}
+
+function parseChecklistText(text, filename) {
+  // Smart parser: detects sections by "Section:", numbered headings, or blank-line groups
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const sections = [];
+  let current = { title: 'General', items: [] };
+  const sectionPattern = /^(section|part|group|category|heading)[:\s]+(.+)/i;
+  const numberedSection = /^(\d+\.?\s+[A-Z][A-Z\s&/]{3,}$)/;
+
+  lines.forEach(line => {
+    const secMatch = line.match(sectionPattern);
+    const numMatch = line.match(numberedSection);
+    if (secMatch) {
+      if (current.items.length) sections.push({...current});
+      current = { title: secMatch[2].trim(), items: [] };
+    } else if (numMatch && line.length < 60) {
+      if (current.items.length) sections.push({...current});
+      current = { title: line.replace(/^\d+\.?\s*/, ''), items: [] };
+    } else if (line.startsWith('#')) {
+      if (current.items.length) sections.push({...current});
+      current = { title: line.replace(/^#+\s*/, ''), items: [] };
+    } else if (line.length > 3 && !line.match(/^[-=]{3,}$/)) {
+      // Strip leading bullets/numbers
+      const item = line.replace(/^[\-\*\•\d]+[\.\)\s]+/, '').trim();
+      if (item.length > 2) current.items.push(item);
+    }
+  });
+  if (current.items.length) sections.push(current);
+
+  const name = filename.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+  return [{ id: 'IMP', name, sections, color: '#7B61FF' }];
+}
+
+function previewImport(templates) {
+  const wrap = document.getElementById('import-preview');
+  if (!templates.length || !templates[0].sections.length) {
+    wrap.style.display = '';
+    wrap.innerHTML = `<div style="background:rgba(255,71,87,0.1);border:1px solid rgba(255,71,87,0.3);border-radius:12px;padding:20px;margin-bottom:20px;">
+      ⚠️ Could not detect checklist items. Try pasting the text using the import button.
+    </div>`;
+    return;
+  }
+  const t = templates[0];
+  const totalItems = t.sections.reduce((s,sec)=>s+sec.items.length,0);
+  wrap.style.display = '';
+  wrap.innerHTML = `
+    <div style="background:rgba(123,97,255,0.08);border:1px solid rgba(123,97,255,0.3);border-radius:16px;padding:22px;margin-bottom:24px;">
+      <div style="font-size:15px;font-weight:800;margin-bottom:4px;">📂 Import Preview — ${t.name}</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">${t.sections.length} sections · ${totalItems} checklist items detected</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;max-height:250px;overflow-y:auto;">
+        ${t.sections.map(s=>`<div style="background:var(--surface2);border-radius:8px;padding:10px 12px;">
+          <div style="font-size:11px;font-weight:700;color:#7B61FF;margin-bottom:6px;">${s.title}</div>
+          ${s.items.slice(0,4).map(i=>`<div style="font-size:11px;color:var(--muted);padding:2px 0;">▸ ${i}</div>`).join('')}
+          ${s.items.length>4?`<div style="font-size:10px;color:var(--muted);margin-top:4px;">+${s.items.length-4} more items...</div>`:''}
+        </div>`).join('')}
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <input type="text" class="form-input" id="import-id"   value="${t.id}"   placeholder="Form ID" style="width:90px;" maxlength="6">
+        <input type="text" class="form-input" id="import-name" value="${t.name}" placeholder="Form name" style="flex:1;min-width:160px;">
+        <button class="btn btn-primary" onclick="confirmImport(${JSON.stringify(t).replace(/"/g,'&quot;')})">✅ Import to System</button>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('import-preview').style.display='none'">✕ Dismiss</button>
+      </div>
+    </div>`;
+}
+
+function confirmImport(t) {
+  const id   = (document.getElementById('import-id')?.value  || t.id  || 'IMP').toUpperCase().replace(/[^A-Z0-9]/g,'').substring(0,6);
+  const name = (document.getElementById('import-name')?.value|| t.name).trim();
+  const templates = DB.getFormTemplates();
+  const existing  = templates.findIndex(x => x.id === id);
+  const template  = { ...t, id, name, custom: true, importedAt: new Date().toISOString() };
+  if (existing >= 0) {
+    if (!confirm(`Template "${id}" already exists. Overwrite?`)) return;
+    templates[existing] = template;
+  } else {
+    templates.push(template);
+  }
+  DB.set('formTemplates', templates);
+  UI.toast(`"${name}" imported — ${t.sections.length} sections ready`, 'success');
+  document.getElementById('import-preview').style.display = 'none';
+  renderTemplates();
+}
+
+// ── PRINT TEMPLATE in Robert Quinn Ltd format ─────────────────
+function printTemplate(id) {
+  const t = DB.getFormTemplate(id);
+  const settings = DB.getSettings();
+  const today = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+  const totalItems = t.sections.reduce((s,sec)=>s+sec.items.length,0);
+
+  const rows = t.sections.map((sec,si) =>
+    sec.items.map((item,ii) =>
+      `<tr>
+        <td style="width:36px;text-align:center;color:#666;font-size:10px;">${si+1}.${ii+1}</td>
+        <td>${item}</td>
+        <td style="width:70px;text-align:center;border-left:1px solid #ddd;"><div style="width:20px;height:20px;border:2px solid #1B5E35;border-radius:4px;display:inline-block;"></div></td>
+        <td style="width:70px;text-align:center;border-left:1px solid #ddd;"><div style="width:20px;height:20px;border:2px solid #CC0000;border-radius:4px;display:inline-block;"></div></td>
+        <td style="width:70px;text-align:center;border-left:1px solid #ddd;"><div style="width:20px;height:20px;border:2px solid #999;border-radius:4px;display:inline-block;"></div></td>
+        <td style="width:180px;border-left:1px solid #ddd;"></td>
+      </tr>
+      ${ ii === sec.items.length - 1 ? '<tr style="height:8px;"><td colspan="6"></td></tr>' : ''}`
+    ).join('')
+  ).join('');
+
+  const win = window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head><title>${t.id} — ${settings.companyName}</title>
+  <style>
+    @page { size: A4; margin: 15mm; }
+    body { font-family: Arial, sans-serif; font-size: 11px; color: #111; margin: 0; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start;
+              border-bottom: 3px solid #1B5E35; padding-bottom: 10px; margin-bottom: 14px; }
+    .co-name { font-size: 18px; font-weight: bold; color: #1B5E35; }
+    .form-id  { font-size: 28px; font-weight: bold; color: #1B5E35; font-family: monospace; }
+    .form-meta { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+    .meta-box { border: 1px solid #ddd; border-radius: 4px; padding: 8px 10px; }
+    .meta-lbl { font-size: 8px; color: #999; letter-spacing: 1px; text-transform: uppercase; }
+    .meta-val { font-size: 12px; font-weight: bold; margin-top: 2px; min-height: 20px; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #1B5E35; color: white; padding: 7px 8px; text-align: left; font-size: 9px; letter-spacing: 1px; }
+    th.center { text-align: center; }
+    td { padding: 7px 8px; border-bottom: 1px solid #eee; vertical-align: middle; }
+    tr:nth-child(even) td { background: #fafafa; }
+    .section-hdr td { background: #f0f7f3 !important; font-weight: bold; color: #1B5E35; font-size: 10px; letter-spacing: 1px; border-top: 2px solid #1B5E35; }
+    .sig-box { margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .sig-field { border: 1px solid #ddd; border-radius: 4px; padding: 10px; }
+    .sig-lbl { font-size: 8px; color: #999; letter-spacing: 1px; }
+    .sig-line { border-bottom: 1px solid #333; height: 36px; margin-top: 8px; }
+    .footer { margin-top: 16px; font-size: 8px; color: #aaa; text-align: center; border-top: 1px solid #eee; padding-top: 6px; }
+    @media print { body { font-size: 10px; } }
+  </style></head><body>
+  <div class="header">
+    <div>
+      <div class="co-name">${settings.companyName}</div>
+      <div style="font-size:12px;color:#555;margin-top:2px;">${settings.siteName}</div>
+    </div>
+    <div style="text-align:right;">
+      <div class="form-id">${t.id}</div>
+      <div style="font-size:11px;color:#555;">${t.name}</div>
+    </div>
+  </div>
+
+  <div class="form-meta">
+    <div class="meta-box"><div class="meta-lbl">Plant / Equipment</div><div class="meta-val"></div></div>
+    <div class="meta-box"><div class="meta-lbl">Date</div><div class="meta-val"></div></div>
+    <div class="meta-box"><div class="meta-lbl">Operator Name</div><div class="meta-val"></div></div>
+    <div class="meta-box"><div class="meta-lbl">Licence / Ticket No.</div><div class="meta-val"></div></div>
+    <div class="meta-box"><div class="meta-lbl">Company</div><div class="meta-val"></div></div>
+    <div class="meta-box"><div class="meta-lbl">Supervisor</div><div class="meta-val"></div></div>
+  </div>
+
+  <table>
+    <thead><tr>
+      <th style="width:36px;">#</th>
+      <th>INSPECTION ITEM</th>
+      <th class="center" style="width:70px;color:#90EE90;">✓ PASS</th>
+      <th class="center" style="width:70px;color:#FFB3B3;">✕ FAIL</th>
+      <th class="center" style="width:70px;color:#ccc;">N/A</th>
+      <th style="width:180px;">REMARKS</th>
+    </tr></thead>
+    <tbody>
+      ${t.sections.map((sec,si) => `
+        <tr class="section-hdr"><td colspan="6">SECTION ${si+1}: ${sec.title.toUpperCase()}</td></tr>
+        ${sec.items.map((item,ii) => `<tr>
+          <td style="text-align:center;color:#666;font-size:10px;">${si+1}.${ii+1}</td>
+          <td>${item}</td>
+          <td style="text-align:center;border-left:1px solid #ddd;"><div style="width:20px;height:20px;border:2px solid #1B5E35;border-radius:3px;margin:0 auto;"></div></td>
+          <td style="text-align:center;border-left:1px solid #ddd;"><div style="width:20px;height:20px;border:2px solid #CC0000;border-radius:3px;margin:0 auto;"></div></td>
+          <td style="text-align:center;border-left:1px solid #ddd;"><div style="width:20px;height:20px;border:2px solid #999;border-radius:3px;margin:0 auto;"></div></td>
+          <td style="border-left:1px solid #ddd;"></td>
+        </tr>`).join('')}
+        <tr style="height:6px;"><td colspan="6"></td></tr>`
+      ).join('')}
+    </tbody>
+  </table>
+
+  <div style="margin-top:12px;background:#f9f9f9;border:1px solid #eee;border-radius:4px;padding:10px;">
+    <strong style="font-size:10px;">NOTES / DEFECTS:</strong>
+    <div style="min-height:40px;border-bottom:1px solid #ddd;margin-top:4px;"></div>
+  </div>
+
+  <div class="sig-box">
+    <div class="sig-field">
+      <div class="sig-lbl">OPERATOR SIGNATURE</div>
+      <div class="sig-line"></div>
+      <div style="font-size:8px;color:#999;margin-top:4px;">Print name: _____________________________ Date: ___________</div>
+    </div>
+    <div class="sig-field">
+      <div class="sig-lbl">SUPERVISOR SIGNATURE</div>
+      <div class="sig-line"></div>
+      <div style="font-size:8px;color:#999;margin-top:4px;">Print name: _____________________________ Date: ___________</div>
+    </div>
+  </div>
+
+  <div class="footer">${settings.companyName} · ${t.id} — ${t.name} · ${settings.siteName} · Total Items: ${totalItems} · Form printed ${today}</div>
+  <script>setTimeout(()=>window.print(),600)<\/script>
+  </body></html>`);
 }
 
 // ============================================================
