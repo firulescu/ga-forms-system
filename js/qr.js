@@ -64,7 +64,6 @@ const QRGen = {
           .plant-loc { font-size: 11px; color: #888; margin-bottom: 16px; }
           #qr { display: flex; justify-content: center; margin: 16px 0; }
           .scan-text { font-size: 10px; color: #aaa; letter-spacing: 2px; margin-top: 8px; }
-          .url { font-size: 8px; color: #ccc; margin-top: 4px; word-break: break-all; }
           @media print { body { background: white; } .label { box-shadow: none; border: 2px solid #000; } }
         </style>
       </head>
@@ -75,7 +74,6 @@ const QRGen = {
           <div class="plant-loc">📍 ${plant.location}</div>
           <div id="qr"></div>
           <div class="scan-text">SCAN TO INSPECT</div>
-          <div class="url">${url}</div>
         </div>
         <script>
           new QRCode(document.getElementById('qr'), {
@@ -84,7 +82,7 @@ const QRGen = {
             colorDark: '#0A0E1A', colorLight: '#ffffff',
             correctLevel: QRCode.CorrectLevel.H
           });
-          setTimeout(() => window.print(), 800);
+          setTimeout(() => window.print(), 1800);
         <\/script>
       </body>
       </html>
