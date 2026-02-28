@@ -492,15 +492,20 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  const plantId = params.get('plant');
-  const siteIdFromQR = params.get('site');
+  // Extract params — check both direct params and those inside ?return=
+  const returnUrl = params.get('return') || '';
+  const returnParams = returnUrl ? new URLSearchParams(new URL(decodeURIComponent(returnUrl)).search) : new URLSearchParams();
+
+  const plantId      = params.get('plant')  || returnParams.get('plant');
+  const siteIdFromQR = params.get('site')   || returnParams.get('site');
+  const pinFromURL   = params.get('pin')    || returnParams.get('pin');
+
   const sites = AUTH.getSites().filter(s => s.active !== false);
   const users = AUTH.getUsers().filter(u => u.active !== false);
 
   // Fresh device with QR scan — bootstrap minimal site data so operator can log in
   if ((!sites.length || !users.length) && plantId && siteIdFromQR) {
-    const pinFromQR = params.get('pin') || null;
-    const placeholderSite = { id: siteIdFromQR, name: 'Site', address: '', operatorPin: pinFromQR, active: true };
+    const placeholderSite = { id: siteIdFromQR, name: 'Site', address: '', operatorPin: pinFromURL, active: true };
     AUTH.saveSite(placeholderSite);
     selectedSite = placeholderSite;
     goStep(3, 'operator');
@@ -509,7 +514,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (!sites.length || !users.length) { goStep(0); return; }
 
-  const isQR = params.has('plant');
+  const isQR = !!(plantId);
   if (isQR) {
     let site = null;
     if (plantId) site = AUTH.getSiteForPlant(plantId);
