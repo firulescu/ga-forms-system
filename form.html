@@ -785,15 +785,28 @@ document.addEventListener('DOMContentLoaded', () => {
   if (urlPlant) {
     state.plantId = urlPlant;
     state.plant = DB.getPlant(urlPlant);
+
+    // If plant not in local DB (fresh device), reconstruct from URL params
+    if (!state.plant) {
+      const pn = params.get('pn');
+      const pp = params.get('pp');
+      const pl = params.get('pl');
+      const pf = params.get('form');
+      if (pn) {
+        state.plant = { id: urlPlant, name: decodeURIComponent(pn), photo: decodeURIComponent(pp||''), location: decodeURIComponent(pl||''), formType: pf || 'GA2-GEN' };
+        // Save to local DB so it persists
+        const plants = DB.sget('plants') || [];
+        if (!plants.find(p => p.id === urlPlant)) { plants.push(state.plant); DB.sset('plants', plants); }
+      }
+    }
+
     if (state.plant) {
       state.step = 'form';
       document.getElementById('plant-step').style.display = 'none';
       document.getElementById('form-step').style.display = '';
       document.getElementById('btn-back-select').style.display = '';
       renderFormOptions();
-      if (urlForm) {
-        selectForm(urlForm);
-      }
+      if (urlForm) { selectForm(urlForm); }
     }
   }
 });

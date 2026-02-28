@@ -519,7 +519,9 @@ document.addEventListener('DOMContentLoaded', () => {
     (existingSite && !existingSite.operatorPin && pinFromURL)
   );
   if (needsBootstrap) {
-    const placeholderSite = { id: siteIdFromQR, name: existingSite?.name || 'Site', address: existingSite?.address || '', operatorPin: pinFromURL, active: true };
+    const snParam = params.get('sn') || returnParams.get('sn');
+    const siteName = snParam ? decodeURIComponent(snParam) : (existingSite?.name || 'Site');
+    const placeholderSite = { id: siteIdFromQR, name: siteName, address: existingSite?.address || '', operatorPin: pinFromURL, active: true };
     AUTH.saveSite(placeholderSite);
     selectedSite = placeholderSite;
     goStep(3, 'operator');

@@ -3,9 +3,15 @@ const QRGen = {
   _url(plantId, siteId) {
     const base = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}`;
     const pin = (typeof AUTH !== 'undefined') ? (AUTH.getSite(siteId)?.operatorPin || '') : '';
-    // Encode PIN so it's not plaintext on printed labels
     const tok = pin ? btoa('op:' + pin) : '';
-    return `${base}form.html?plant=${plantId}&site=${siteId}${tok?'&tok='+tok:''}`;
+    // Get plant info to embed in URL so fresh devices can pre-select
+    const plant = (typeof DB !== 'undefined') ? DB.getPlant(plantId) : null;
+    const formType = plant?.formType || '';
+    const plantName = plant ? encodeURIComponent(plant.name) : '';
+    const plantPhoto = plant ? encodeURIComponent(plant.photo || '') : '';
+    const plantLoc = plant ? encodeURIComponent(plant.location || '') : '';
+    const siteName = (typeof AUTH !== 'undefined') ? encodeURIComponent(AUTH.getSite(siteId)?.name || '') : '';
+    return `${base}form.html?plant=${plantId}&site=${siteId}${tok?'&tok='+tok:''}${formType?'&form='+formType:''}${plantName?'&pn='+plantName:''}${plantPhoto?'&pp='+plantPhoto:''}${plantLoc?'&pl='+plantLoc:''}${siteName?'&sn='+siteName:''}`;
   },
 
   // Generate QR code as data URL for a plant
