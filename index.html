@@ -334,9 +334,10 @@
       </a>
     </nav>
     <div class="sidebar-footer">
-      <div class="site-info">
+      <div class="site-info" onclick="showSiteSwitcher()" style="cursor:pointer;padding:8px;border-radius:8px;transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'" title="Click to switch site">
         <strong id="site-name-display">Loading...</strong>
         <span id="company-display">Loading...</span>
+        <span style="font-size:9px;color:var(--accent);font-family:'Space Mono',monospace;display:block;margin-top:2px;">⇄ SWITCH SITE</span>
       </div>
     </div>
   </aside>
@@ -1929,6 +1930,32 @@ function printWeeklySummary() {
 
 
 // ============================================================
+// SITE SWITCHER
+// ============================================================
+function showSiteSwitcher() {
+  const sites = AUTH.getSites().filter(s => s.active !== false);
+  const session = AUTH.getSession();
+  const currentSiteId = session?.siteId;
+  const btns = sites.map(s => `
+    <div onclick="switchToSite('${s.id}')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:10px;cursor:pointer;border:2px solid ${s.id===currentSiteId?'var(--accent)':'var(--border)'};background:${s.id===currentSiteId?'rgba(46,125,82,0.1)':'var(--surface)'};margin-bottom:8px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='${s.id===currentSiteId?'rgba(46,125,82,0.1)':'var(--surface)'}'">
+      <span style="font-size:22px;">🏗️</span>
+      <div style="flex:1;">
+        <div style="font-weight:700;font-size:14px;color:${s.id===currentSiteId?'var(--accent)':'var(--text)'};">${s.name} ${s.id===currentSiteId?'✓':''}</div>
+        <div style="font-size:11px;color:var(--muted);">${s.address||''}</div>
+      </div>
+    </div>`).join('');
+  UI.modal('⇄ Switch Site', `<div style="padding:4px 0;">${btns}</div>`);
+}
+
+function switchToSite(siteId) {
+  const session = AUTH.getSession();
+  if (!session) return;
+  session.siteId = siteId;
+  localStorage.setItem('ga_session', JSON.stringify(session));
+  UI.closeModal();
+  location.reload();
+}
+
 // ADMIN PANEL — Sites & Users
 // ============================================================
 function renderAdminPanel() {

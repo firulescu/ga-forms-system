@@ -70,66 +70,9 @@ const DB = {
       return d.toISOString().split('T')[0];
     };
     const records = [
-      {
-        plantId:'PLT-001', plantName:'Diesel Generator A',
-        make:'Caterpillar', model:'C3.3B', serialNo:'CAT-C33B-00421', yearOfManufacture:'2018',
-        lastInspectionDate: fmt(-180), nextInspectionDue: fmt(14),
-        inspectorName:'John Murphy — Quinn Safety Services',
-        insuranceExpiry: fmt(120), certExpiry: fmt(90), certRef:'CERT-PLT001-2025',
-        riskAssessmentRef:'RA-GEN-001', licenceRequired:'Competent Operator',
-        notes:'Annual service due alongside next inspection. Oil changed Feb 2026.',
-        savedBy:'Marian Firulescu', createdAt: fmt(-180), updatedAt: fmt(-5)
-      },
-      {
-        plantId:'PLT-002', plantName:'Air Compressor Unit',
-        make:'Atlas Copco', model:'GA11', serialNo:'AC-GA11-8812', yearOfManufacture:'2020',
-        lastInspectionDate: fmt(-90), nextInspectionDue: fmt(90),
-        inspectorName:'Pat O\'Brien — Safe Plant Ireland',
-        insuranceExpiry: fmt(240), certExpiry: fmt(180), certRef:'CERT-PLT002-2025',
-        riskAssessmentRef:'RA-COMP-002', licenceRequired:'None',
-        notes:'Pressure relief valve tested OK. Next service at 2000 hrs.',
-        savedBy:'Marian Firulescu', createdAt: fmt(-90), updatedAt: fmt(-10)
-      },
-      {
-        plantId:'PLT-003', plantName:'Overhead Crane #1',
-        make:'Demag', model:'EKKE 5000', serialNo:'DM-EKKE-2019-007', yearOfManufacture:'2019',
-        lastInspectionDate: fmt(-200), nextInspectionDue: fmt(-5),
-        inspectorName:'Eamonn Kelly — LOLER Inspections Ltd',
-        insuranceExpiry: fmt(60), certExpiry: fmt(-5), certRef:'CERT-PLT003-2024',
-        riskAssessmentRef:'RA-CRANE-003', licenceRequired:'Crane Operator',
-        notes:'⚠️ CERT EXPIRED — renewal inspection booked. Do not operate without new cert.',
-        savedBy:'Marian Firulescu', createdAt: fmt(-200), updatedAt: fmt(-2)
-      },
-      {
-        plantId:'PLT-004', plantName:'Forklift FL-07',
-        make:'Toyota', model:'8FBN25', serialNo:'TY-8FBN-FL07-55', yearOfManufacture:'2021',
-        lastInspectionDate: fmt(-60), nextInspectionDue: fmt(120),
-        inspectorName:'Sean Doyle — National Forklift Safety',
-        insuranceExpiry: fmt(200), certExpiry: fmt(180), certRef:'CERT-PLT004-2026',
-        riskAssessmentRef:'RA-FLT-004', licenceRequired:'Forklift Licence',
-        notes:'Battery replaced March 2025. Tyre inspection due at next service.',
-        savedBy:'Marian Firulescu', createdAt: fmt(-60), updatedAt: fmt(-15)
-      },
-      {
-        plantId:'PLT-005', plantName:'Pressure Vessel V3',
-        make:'Hamworthy', model:'HV750', serialNo:'HW-HV750-0033', yearOfManufacture:'2017',
-        lastInspectionDate: fmt(-150), nextInspectionDue: fmt(30),
-        inspectorName:'Claire Brennan — PED Inspection Services',
-        insuranceExpiry: fmt(90), certExpiry: fmt(30), certRef:'CERT-PLT005-2025',
-        riskAssessmentRef:'RA-PV-005', licenceRequired:'Competent Operator',
-        notes:'Statutory inspection under PED. Safety valve calibrated Nov 2025.',
-        savedBy:'Marian Firulescu', createdAt: fmt(-150), updatedAt: fmt(-20)
-      },
-      {
-        plantId:'PLT-006', plantName:'Scissor Lift SL-02',
-        make:'Genie', model:'GS-2632', serialNo:'GE-GS26-SL02-88', yearOfManufacture:'2022',
-        lastInspectionDate: fmt(-30), nextInspectionDue: fmt(150),
-        inspectorName:'Tom Walsh — IPAF Inspections',
-        insuranceExpiry: fmt(300), certExpiry: fmt(240), certRef:'CERT-PLT006-2026',
-        riskAssessmentRef:'RA-MEWP-006', licenceRequired:'MEWP / Cherry Picker',
-        notes:'IPAF PAL card required for operators. Emergency lowering tested OK.',
-        savedBy:'Marian Firulescu', createdAt: fmt(-30), updatedAt: fmt(-5)
-      },
+      { plantId:'PLT-001', plantName:'Diesel Generator A', make:'Caterpillar', model:'C3.3B', serialNo:'CAT-C33B-00421', yearOfManufacture:'2018', lastInspectionDate:fmt(-180), nextInspectionDue:fmt(14), inspectorName:'John Murphy — Quinn Safety Services', insuranceExpiry:fmt(120), certExpiry:fmt(90), certRef:'CERT-PLT001-2025', riskAssessmentRef:'RA-GEN-001', licenceRequired:'Competent Operator', notes:'Annual service due alongside next inspection.', savedBy:'Marian Firulescu', createdAt:fmt(-180), updatedAt:fmt(-5) },
+      { plantId:'PLT-002', plantName:'Air Compressor Unit', make:'Atlas Copco', model:'GA11', serialNo:'AC-GA11-8812', yearOfManufacture:'2020', lastInspectionDate:fmt(-90), nextInspectionDue:fmt(90), inspectorName:'Pat O\'Brien — Safe Plant Ireland', insuranceExpiry:fmt(240), certExpiry:fmt(180), certRef:'CERT-PLT002-2025', riskAssessmentRef:'RA-COMP-002', licenceRequired:'None', notes:'Pressure relief valve tested OK.', savedBy:'Marian Firulescu', createdAt:fmt(-90), updatedAt:fmt(-10) },
+      { plantId:'PLT-003', plantName:'Overhead Crane #1', make:'Demag', model:'EKKE 5000', serialNo:'DM-EKKE-2019-007', yearOfManufacture:'2019', lastInspectionDate:fmt(-200), nextInspectionDue:fmt(-5), inspectorName:'Eamonn Kelly — LOLER Inspections Ltd', insuranceExpiry:fmt(60), certExpiry:fmt(-5), certRef:'CERT-PLT003-2024', riskAssessmentRef:'RA-CRANE-003', licenceRequired:'Crane Operator', notes:'⚠️ CERT EXPIRED — renewal inspection booked.', savedBy:'Marian Firulescu', createdAt:fmt(-200), updatedAt:fmt(-2) },
     ];
     this.set('ga1_records', records);
     return records;
@@ -164,25 +107,18 @@ const DB = {
   _saveLifting(l)    { this.sset('lifting_items', l); },
   seedLifting() {
     const today = new Date();
-    const fmt = (offsetDays) => {
-      const d = new Date(today);
-      d.setDate(d.getDate() + offsetDays);
-      return d.toISOString().split('T')[0];
-    };
+    const fmt = (offsetDays) => { const d = new Date(today); d.setDate(d.getDate() + offsetDays); return d.toISOString().split('T')[0]; };
     const qc = this.getCurrentColourCode();
     const prevColour = { green:'blue', yellow:'green', red:'yellow', blue:'red' }[qc.colour];
-
     const items = [
-      { id:'LFT-001', category:'Crane / Hoist',   description:'Overhead Crane 5T',              make:'Demag',   model:'EKKE 5T',      serialNo:'DM-2019-001', swl:'5000', swlUnit:'kg', yearOfManufacture:'2019', lastThoroughExam:fmt(-30),  nextThoroughExam:fmt(155), colourCode:qc.colour, status:'active', location:'Main Hall',     certRef:'CE-2026-001', notes:'' },
-      { id:'LFT-002', category:'Chain Sling',      description:'2-Leg Chain Sling 2T',           make:'Pewag',   model:'8mm Grade 80', serialNo:'PW-8MM-042',  swl:'2000', swlUnit:'kg', yearOfManufacture:'2022', lastThoroughExam:fmt(-15),  nextThoroughExam:fmt(170), colourCode:qc.colour, status:'active', location:'Rigging Store', certRef:'CE-2026-002', notes:'' },
-      { id:'LFT-003', category:'Shackle',          description:'Bow Shackle 3.25T',              make:'Crosby',  model:'G-209',        serialNo:'CS-3T-018',   swl:'3250', swlUnit:'kg', yearOfManufacture:'2021', lastThoroughExam:fmt(-185), nextThoroughExam:fmt(-5),  colourCode:prevColour,status:'active', location:'Rigging Store', certRef:'CE-2025-003', notes:'EXAM OVERDUE — removed from service pending inspection' },
-      { id:'LFT-004', category:'Webbing Sling',    description:'Single Leg Webbing Sling 2T×3m', make:'Spanset', model:'EWG',          serialNo:'SP-2T3M-007', swl:'2000', swlUnit:'kg', yearOfManufacture:'2023', lastThoroughExam:fmt(-30),  nextThoroughExam:fmt(155), colourCode:qc.colour, status:'active', location:'Rigging Store', certRef:'CE-2026-004', notes:'' },
-      { id:'LFT-005', category:'Hook',             description:'Safety Hook 5T',                 make:'Gunnebo', model:'SHK-5',        serialNo:'GB-5T-033',   swl:'5000', swlUnit:'kg', yearOfManufacture:'2020', lastThoroughExam:fmt(-30),  nextThoroughExam:fmt(155), colourCode:qc.colour, status:'active', location:'Main Hall',     certRef:'CE-2026-005', notes:'' },
-      { id:'LFT-006', category:'Spreader Beam',    description:'Adjustable Spreader Beam 3T',    make:'Modulift', model:'MOD14+',      serialNo:'ML-3T-2021',  swl:'3000', swlUnit:'kg', yearOfManufacture:'2021', lastThoroughExam:fmt(-25),  nextThoroughExam:fmt(160), colourCode:qc.colour, status:'active', location:'Lifting Store', certRef:'CE-2026-006', notes:'' },
-      { id:'LFT-007', category:'Chain Block',      description:'Chain Block 1T',                 make:'Kito',    model:'CB010',        serialNo:'KT-1T-CB-019',swl:'1000', swlUnit:'kg', yearOfManufacture:'2020', lastThoroughExam:fmt(-20),  nextThoroughExam:fmt(25),  colourCode:qc.colour, status:'active', location:'Workshop',      certRef:'CE-2026-007', notes:'Due soon — book inspection this week' },
-      { id:'LFT-008', category:'Eye Bolt',         description:'Swivel Eye Bolt 2T (set of 4)',  make:'RUD',     model:'VWBF M20',     serialNo:'RUD-M20-2T',  swl:'2000', swlUnit:'kg', yearOfManufacture:'2022', lastThoroughExam:fmt(-28),  nextThoroughExam:fmt(157), colourCode:qc.colour, status:'active', location:'Rigging Store', certRef:'CE-2026-008', notes:'' },
+      { id:'LFT-001', category:'Crane / Hoist',  description:'Overhead Crane 5T',         make:'Demag',    model:'EKKE 5T',      serialNo:'DM-2019-001',  swl:'5000', swlUnit:'kg', yearOfManufacture:'2019', lastThoroughExam:fmt(-30),  nextThoroughExam:fmt(155), colourCode:qc.colour,    status:'active', location:'Main Hall',     certRef:'CE-2026-001', notes:'' },
+      { id:'LFT-002', category:'Chain Sling',     description:'2-Leg Chain Sling 2T',      make:'Pewag',    model:'8mm Grade 80', serialNo:'PW-8MM-042',   swl:'2000', swlUnit:'kg', yearOfManufacture:'2022', lastThoroughExam:fmt(-15),  nextThoroughExam:fmt(170), colourCode:qc.colour,    status:'active', location:'Rigging Store', certRef:'CE-2026-002', notes:'' },
+      { id:'LFT-003', category:'Shackle',         description:'Bow Shackle 3.25T',         make:'Crosby',   model:'G-209',        serialNo:'CS-3T-018',    swl:'3250', swlUnit:'kg', yearOfManufacture:'2021', lastThoroughExam:fmt(-185), nextThoroughExam:fmt(-5),  colourCode:prevColour,   status:'active', location:'Rigging Store', certRef:'CE-2025-003', notes:'EXAM OVERDUE' },
+      { id:'LFT-004', category:'Webbing Sling',   description:'Single Leg Webbing 2T×3m',  make:'Spanset',  model:'EWG',          serialNo:'SP-2T3M-007',  swl:'2000', swlUnit:'kg', yearOfManufacture:'2023', lastThoroughExam:fmt(-30),  nextThoroughExam:fmt(155), colourCode:qc.colour,    status:'active', location:'Rigging Store', certRef:'CE-2026-004', notes:'' },
+      { id:'LFT-005', category:'Hook',            description:'Safety Hook 5T',            make:'Gunnebo',  model:'SHK-5',        serialNo:'GB-5T-033',    swl:'5000', swlUnit:'kg', yearOfManufacture:'2020', lastThoroughExam:fmt(-30),  nextThoroughExam:fmt(155), colourCode:qc.colour,    status:'active', location:'Main Hall',     certRef:'CE-2026-005', notes:'' },
+      { id:'LFT-006', category:'Chain Block',     description:'Chain Block 1T',            make:'Kito',     model:'CB010',        serialNo:'KT-1T-CB-019', swl:'1000', swlUnit:'kg', yearOfManufacture:'2020', lastThoroughExam:fmt(-20),  nextThoroughExam:fmt(25),  colourCode:qc.colour,    status:'active', location:'Workshop',      certRef:'CE-2026-007', notes:'Due soon' },
     ];
-    this.set('lifting_items', items);
+    this.sset('lifting_items', items);
     return items;
   },
   getLiftingItem(id) { return this.getLiftingItems().find(i => i.id === id); },
@@ -739,9 +675,13 @@ const DB = {
   // SETTINGS
   // ============================================================
   getSettings() {
-    return this.sget('settings') || {
+    const saved = this.sget('settings');
+    if (saved) return saved;
+    // Default: use the actual current site name instead of hardcoded fallback
+    const site = (typeof AUTH !== 'undefined') ? AUTH.getSite(AUTH.getSiteId()) : null;
+    return {
       companyName: 'Robert Quinn Ltd',
-      siteName: 'Main Construction Site',
+      siteName: site?.name || 'Site Name',
       siteManager: 'Site Manager',
       safetyOfficer: 'Safety Officer',
       notifyEmail: 'firulescum@gmail.com',
