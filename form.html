@@ -11,6 +11,7 @@
 <script src="js/ui.js"></script>
 <script src="js/firebase-config.js"></script>
 <script src="js/firebase.js"></script>
+<script src="js/offline.js"></script>
 <style>
   :root {
     --bg: #060A14;
@@ -119,9 +120,9 @@
   /* Status toggle buttons inside item */
   .check-actions { display: flex; gap: 6px; padding: 0 16px 10px 56px; }
   .check-btn {
-    font-size: 11px; font-family: 'Space Mono', monospace; font-weight: 700;
-    padding: 5px 12px; border-radius: 6px; border: none; cursor: pointer;
-    transition: all 0.15s; letter-spacing: 0.5px;
+    font-size: 12px; font-family: 'Space Mono', monospace; font-weight: 700;
+    padding: 10px 16px; border-radius: 8px; border: none; cursor: pointer;
+    transition: all 0.15s; letter-spacing: 0.5px; min-height: 44px; min-width: 70px;
   }
   .check-btn.pass { background: rgba(46,125,82,0.15); color: var(--accent); }
   .check-btn.pass.active { background: var(--accent); color: white; }
@@ -195,9 +196,124 @@
   .quick-all { font-size: 12px; font-family: 'Space Mono', monospace; color: var(--accent); background: none; border: 1px solid rgba(0,200,150,0.3); border-radius: 6px; padding: 4px 10px; cursor: pointer; float: right; }
 
   .pb { padding-bottom: 90px; }
+
+  /* INLINE LOGIN MODAL */
+  .login-overlay {
+    position: fixed; inset: 0; z-index: 999;
+    background: rgba(6,10,20,0.97);
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .login-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+    padding: 28px 24px; width: 100%; max-width: 360px; box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+  }
+  .login-logo { text-align: center; margin-bottom: 20px; }
+  .login-logo .logo-icon { font-size: 48px; }
+  .login-logo .logo-name { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--accent); letter-spacing: 3px; margin-top: 6px; }
+  .login-title { font-size: 20px; font-weight: 800; text-align: center; margin-bottom: 6px; }
+  .login-sub { font-size: 12px; color: var(--muted); text-align: center; margin-bottom: 24px; }
+  .login-form-group { margin-bottom: 14px; }
+  .login-label { display: block; font-size: 10px; color: var(--muted); margin-bottom: 6px; letter-spacing: 2px; font-family: 'Space Mono', monospace; }
+  .login-input {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 12px; padding: 14px 16px; color: var(--text);
+    font-family: 'Syne', sans-serif; font-size: 16px; /* 16px prevents iOS zoom */
+    transition: border-color 0.2s; -webkit-appearance: none; outline: none;
+  }
+  .login-input:focus { border-color: var(--accent); }
+  .login-input::placeholder { color: var(--muted); }
+  .login-pin-row { display: flex; gap: 8px; }
+  .login-pin-dot {
+    flex: 1; height: 52px; background: var(--surface2); border: 2px solid var(--border2);
+    border-radius: 10px; display: flex; align-items: center; justify-content: center;
+    font-size: 24px; color: var(--muted); transition: all 0.2s;
+  }
+  .login-pin-dot.filled { border-color: var(--accent); color: var(--text); }
+  .login-numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
+  .np-btn {
+    height: 56px; background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 12px; font-size: 20px; font-weight: 700; color: var(--text);
+    cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .np-btn:active { background: rgba(46,125,82,0.2); border-color: var(--accent); transform: scale(0.95); }
+  .np-btn.del { font-size: 16px; color: var(--muted); }
+  .login-error { background: rgba(255,71,87,0.1); border: 1px solid rgba(255,71,87,0.3); border-radius: 10px; padding: 10px 14px; font-size: 13px; color: var(--danger); margin-bottom: 14px; text-align: center; display: none; }
+  .login-site-selector { display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; margin-bottom: 14px; }
+  .login-site-btn {
+    background: var(--surface2); border: 1px solid var(--border2); border-radius: 10px;
+    padding: 12px 14px; cursor: pointer; text-align: left; font-family: 'Syne', sans-serif;
+    color: var(--text); font-size: 13px; font-weight: 700; transition: all 0.15s;
+  }
+  .login-site-btn:hover, .login-site-btn:active { border-color: var(--accent); background: rgba(46,125,82,0.06); }
+
+  /* CONNECTION STATUS PILL */
+  .conn-status {
+    position: fixed; top: 70px; right: 14px; z-index: 200;
+    font-family: 'Space Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 1px;
+    padding: 4px 10px; border-radius: 20px; display: none; transition: all 0.3s;
+  }
+  .conn-status.offline { display: block; background: rgba(255,71,87,0.15); border: 1px solid rgba(255,71,87,0.4); color: var(--danger); }
+  .conn-status.syncing { display: block; background: rgba(255,107,53,0.15); border: 1px solid rgba(255,107,53,0.4); color: #FF6B35; }
+  .conn-status.saved { display: block; background: rgba(46,125,82,0.15); border: 1px solid rgba(46,125,82,0.4); color: var(--accent); }
 </style>
 </head>
 <body>
+
+<!-- CONNECTION STATUS PILL -->
+<div class="conn-status" id="conn-status">● OFFLINE — saved locally</div>
+
+<!-- INLINE LOGIN MODAL (shown instead of redirecting to login.html) -->
+<div class="login-overlay" id="login-overlay" style="display:none;">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-icon">🛡️</div>
+      <div class="logo-name">ROBERT QUINN LTD</div>
+    </div>
+
+    <!-- Step 1: Site selection (when ?site= not in URL) -->
+    <div id="lo-step-site" style="display:none;">
+      <div class="login-title">Select Site</div>
+      <div class="login-sub">Which site are you on?</div>
+      <div class="login-site-selector" id="lo-site-list"></div>
+    </div>
+
+    <!-- Step 2: Name + PIN -->
+    <div id="lo-step-pin">
+      <div class="login-title">Sign In</div>
+      <div class="login-sub" id="lo-sub">Enter your name and site PIN to continue</div>
+      <div class="login-error" id="lo-error"></div>
+      <div class="login-form-group">
+        <label class="login-label">YOUR NAME</label>
+        <input type="text" class="login-input" id="lo-name" placeholder="e.g. John Smith" autocomplete="name" autocapitalize="words">
+      </div>
+      <div class="login-form-group">
+        <label class="login-label">SITE PIN</label>
+        <div class="login-pin-row" id="lo-pin-dots">
+          <div class="login-pin-dot" id="lo-d0">–</div>
+          <div class="login-pin-dot" id="lo-d1">–</div>
+          <div class="login-pin-dot" id="lo-d2">–</div>
+          <div class="login-pin-dot" id="lo-d3">–</div>
+        </div>
+        <div class="login-numpad">
+          <button class="np-btn" onclick="loPad('1')">1</button>
+          <button class="np-btn" onclick="loPad('2')">2</button>
+          <button class="np-btn" onclick="loPad('3')">3</button>
+          <button class="np-btn" onclick="loPad('4')">4</button>
+          <button class="np-btn" onclick="loPad('5')">5</button>
+          <button class="np-btn" onclick="loPad('6')">6</button>
+          <button class="np-btn" onclick="loPad('7')">7</button>
+          <button class="np-btn" onclick="loPad('8')">8</button>
+          <button class="np-btn" onclick="loPad('9')">9</button>
+          <button class="np-btn" onclick="loPad('')"></button>
+          <button class="np-btn" onclick="loPad('0')">0</button>
+          <button class="np-btn del" onclick="loPad('⌫')">⌫</button>
+        </div>
+      </div>
+      <button class="btn-full btn-primary" onclick="loSubmit()" style="margin-top:14px;padding:16px;font-family:'Space Mono',monospace;font-weight:700;">Sign In & Continue →</button>
+    </div>
+  </div>
+</div>
 
 <!-- SCREEN: MY SUBMISSIONS HISTORY -->
 <div id="screen-history" style="display:none;">
@@ -357,8 +473,9 @@ const urlForm = params.get('form');
 // SCREEN MANAGEMENT
 // ============================================================
 function showScreen(name) {
-  ['select','operator','checklist','success'].forEach(s => {
-    document.getElementById('screen-' + s).style.display = s === name ? '' : 'none';
+  ['select','operator','checklist','success','history'].forEach(s => {
+    const el = document.getElementById('screen-' + s);
+    if (el) el.style.display = s === name ? '' : 'none';
   });
 }
 
@@ -537,6 +654,8 @@ function setItemStatus(idx, status) {
   item.className = 'check-item' + (status === 1 ? ' checked' : status === 2 ? ' failed' : status === 3 ? ' na' : '');
   box.textContent = status === 1 ? '✓' : status === 2 ? '✕' : status === 3 ? '—' : '';
   updateProgress();
+  // Autosave progress so operator can restore if they close/reload
+  autosaveDraft();
 }
 
 function tickAll(from, to) {
@@ -589,6 +708,9 @@ async function submitForm() {
   }
 
   const btnSubmit = document.getElementById('btn-submit');
+  // Duplicate submission prevention — disable for 5 seconds
+  if (btnSubmit._submitting) return;
+  btnSubmit._submitting = true;
   if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.textContent = 'Submitting…'; }
 
   const safeSignature = (typeof sigData !== 'undefined') ? sigData : null;
@@ -644,22 +766,35 @@ async function submitForm() {
   };
   DB.addNotification(notif);
 
-  // Push to Firebase so admin sees it on their device
+  // Push to Firebase — queue offline if no connection
   if (typeof FIREBASE_URL !== 'undefined' && FIREBASE_URL) {
     const siteId = AUTH.getSiteId();
     if (siteId) {
       FBSYNC.init(FIREBASE_URL, siteId);
-      try {
-        await Promise.all([
-          FBSYNC.writeSubmission(sub),
-          FBSYNC.writeNotification({ ...notif, id: 'N-' + Date.now(), createdAt: sub.submittedAt, read: false }),
-          ...defects.map(d => FBSYNC.writeDefect(d))
-        ]);
-      } catch(e) {
-        console.warn('Firebase write failed — saved locally only', e);
+      const notifObj = { ...notif, id: 'N-' + Date.now(), createdAt: sub.submittedAt, read: false };
+
+      if (navigator.onLine) {
+        try {
+          await Promise.all([
+            FBSYNC.writeSubmission(sub),
+            FBSYNC.writeNotification(notifObj),
+            ...defects.map(d => FBSYNC.writeDefect(d))
+          ]);
+        } catch(e) {
+          // Failed — queue for later
+          console.warn('Firebase write failed — queuing offline', e);
+          OFFLINE.enqueue(sub, defects, notifObj);
+        }
+      } else {
+        // No connection — queue for sync when back online
+        OFFLINE.enqueue(sub, defects, notifObj);
       }
+      updateConnStatus();
     }
   }
+
+  // Clear autosaved draft
+  clearDraft();
 
     // Show success
   const color = score === 100 ? '#00C896' : score >= 90 ? '#FF6B35' : '#FF4757';
@@ -706,8 +841,109 @@ function startNew() {
 }
 
 // ============================================================
-// INIT
+// INLINE LOGIN MODAL
 // ============================================================
+let loPin = '';
+let loSiteId = null;
+
+function loShowSiteStep() {
+  document.getElementById('lo-step-site').style.display = '';
+  document.getElementById('lo-step-pin').style.display = 'none';
+  const sites = AUTH.getSites().filter(s => s.active !== false);
+  document.getElementById('lo-site-list').innerHTML = sites.map(s =>
+    `<button class="login-site-btn" onclick="loSelectSite('${s.id}')">${s.name || s.id}</button>`
+  ).join('');
+}
+
+function loSelectSite(siteId) {
+  loSiteId = siteId;
+  document.getElementById('lo-step-site').style.display = 'none';
+  document.getElementById('lo-step-pin').style.display = '';
+  // Pre-fill last used name
+  const lastName = localStorage.getItem('ga_last_op_name') || '';
+  if (lastName) document.getElementById('lo-name').value = lastName;
+}
+
+function loPad(key) {
+  if (key === '⌫' || key === '') {
+    loPin = loPin.slice(0, -1);
+  } else if (loPin.length < 4) {
+    loPin += key;
+  }
+  // Update dots
+  for (let i = 0; i < 4; i++) {
+    const d = document.getElementById('lo-d' + i);
+    if (d) {
+      d.textContent = i < loPin.length ? '●' : '–';
+      d.className = 'login-pin-dot' + (i < loPin.length ? ' filled' : '');
+    }
+  }
+  // Auto-submit when 4 digits entered
+  if (loPin.length === 4) setTimeout(loSubmit, 200);
+}
+
+function loSubmit() {
+  const name = (document.getElementById('lo-name').value || '').trim();
+  const errEl = document.getElementById('lo-error');
+  errEl.style.display = 'none';
+
+  if (!name) {
+    errEl.textContent = 'Please enter your name';
+    errEl.style.display = '';
+    return;
+  }
+  if (loPin.length < 4) {
+    errEl.textContent = 'Please enter the 4-digit site PIN';
+    errEl.style.display = '';
+    return;
+  }
+
+  // Try site operator PIN
+  if (AUTH.isOperatorPin(loPin, loSiteId)) {
+    AUTH.setOperatorSession(name, loSiteId);
+    localStorage.setItem('ga_last_op_name', name);
+    localStorage.setItem('ga_last_site', loSiteId);
+    document.getElementById('login-overlay').style.display = 'none';
+    initAfterLogin();
+    return;
+  }
+
+  // Try named staff PIN
+  const user = AUTH.findUserByPin(loPin, loSiteId);
+  if (user) {
+    AUTH.setSession(user, loSiteId);
+    document.getElementById('login-overlay').style.display = 'none';
+    initAfterLogin();
+    return;
+  }
+
+  // Wrong PIN
+  errEl.textContent = 'Incorrect PIN — please try again';
+  errEl.style.display = '';
+  loPin = '';
+  for (let i = 0; i < 4; i++) {
+    const d = document.getElementById('lo-d' + i);
+    if (d) { d.textContent = '–'; d.className = 'login-pin-dot'; }
+  }
+}
+
+// ============================================================
+// CONNECTION STATUS
+// ============================================================
+function updateConnStatus() {
+  const pill = document.getElementById('conn-status');
+  if (!pill) return;
+  const pending = OFFLINE.getPendingCount();
+  if (!navigator.onLine) {
+    pill.className = 'conn-status offline';
+    pill.textContent = '● OFFLINE — forms saved locally';
+  } else if (pending > 0) {
+    pill.className = 'conn-status syncing';
+    pill.textContent = `↑ ${pending} pending sync`;
+  } else {
+    pill.className = 'conn-status';
+  }
+}
 
 // ============================================================
 // HISTORY & LOGOUT
@@ -725,7 +961,6 @@ function renderHistory() {
   document.getElementById('hist-user-name').textContent = '👷 ' + userName;
   document.getElementById('hist-site-name').textContent = site ? '📍 ' + site.name : '';
 
-  // Get all submissions for this user on this site
   const allSubs = DB.getSubmissions();
   const mySubs  = allSubs.filter(s => s.operatorName === userName).sort((a,b) => new Date(b.submittedAt) - new Date(a.submittedAt));
 
@@ -742,13 +977,14 @@ function renderHistory() {
     const date  = new Date(s.submittedAt).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
     const time  = new Date(s.submittedAt).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
     const failBadge = s.failed > 0 ? `<span style="background:rgba(255,71,87,0.12);color:var(--danger);padding:2px 8px;border-radius:6px;font-size:10px;font-family:'Space Mono',monospace;">${s.failed} FAIL${s.failed!==1?'S':''}</span>` : '';
+    const pendingBadge = s._pending ? `<span style="background:rgba(255,107,53,0.12);color:#FF6B35;padding:2px 8px;border-radius:6px;font-size:10px;font-family:'Space Mono',monospace;">PENDING SYNC</span>` : '';
     return `<div class="hist-item">
       <div class="hist-item-top">
         <div>
           <div class="hist-plant">${plant?.photo||'🏗️'} ${plant?.name||s.plantId}</div>
           <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
             <span class="hist-form" style="background:rgba(46,125,82,0.1);color:var(--accent);">${s.formId}</span>
-            ${failBadge}
+            ${failBadge}${pendingBadge}
           </div>
         </div>
         <div class="hist-score" style="color:${color};">${score}%</div>
@@ -763,52 +999,90 @@ function logout() {
   window.location.href = 'login.html';
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  // Auth guard - operators and above can fill forms
-  if (!AUTH.isLoggedIn()) {
-    const returnUrl = encodeURIComponent(window.location.href);
-    window.location.href = 'login.html?return=' + returnUrl;
-    return;
-  }
-  // Init Firebase sync
-  const siteId = AUTH.getSiteId();
+// ============================================================
+// AUTOSAVE FORM PROGRESS
+// ============================================================
+const AUTOSAVE_KEY = 'ga_form_draft';
+
+function autosaveDraft() {
+  try {
+    const draft = {
+      plantId: state.plantId,
+      formId: state.formId,
+      answers: state.answers,
+      name: document.getElementById('op-name')?.value || '',
+      company: document.getElementById('op-company')?.value || '',
+      licence: document.getElementById('op-licence')?.value || '',
+      notes: document.getElementById('op-notes')?.value || '',
+      date: document.getElementById('op-date')?.value || '',
+      savedAt: Date.now()
+    };
+    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(draft));
+  } catch {}
+}
+
+function clearDraft() {
+  try { localStorage.removeItem(AUTOSAVE_KEY); } catch {}
+}
+
+function loadDraft() {
+  try {
+    const d = JSON.parse(localStorage.getItem(AUTOSAVE_KEY));
+    if (!d) return null;
+    // Expire drafts after 24 hours
+    if (Date.now() - d.savedAt > 86400000) { clearDraft(); return null; }
+    return d;
+  } catch { return null; }
+}
+
+// ============================================================
+// INIT
+// ============================================================
+function initAfterLogin() {
+  const session = AUTH.getSession();
+  const siteId = session?.siteId;
+
+  // Init Firebase
   if (typeof FIREBASE_URL !== 'undefined' && FIREBASE_URL && siteId) {
     FBSYNC.init(FIREBASE_URL, siteId);
+    // Sync any queued offline submissions
+    OFFLINE.syncAll(FIREBASE_URL, siteId);
   }
-  // Pre-fill operator name from session
-  const session = AUTH.getSession();
+
+  // Pre-fill operator details
   if (session) {
-    // Pre-fill name from session
     const nameEl = document.getElementById('op-name');
+    const lastOpName = localStorage.getItem('ga_last_op_name') || '';
     if (nameEl && session.name) nameEl.value = session.name;
-    // Pre-fill company from site settings
-    const site = AUTH.getSite(session.siteId);
+    else if (nameEl && lastOpName) nameEl.value = lastOpName;
+
+    const site = AUTH.getSite(siteId);
     const compEl = document.getElementById('op-company');
     if (compEl && site) compEl.value = site.company || 'Robert Quinn Ltd';
-    // Today's date
+
     const dateEl = document.getElementById('op-date');
     if (dateEl && !dateEl.value) dateEl.value = new Date().toISOString().split('T')[0];
-    // Show name + site in header
+
     const selName = document.getElementById('sel-user-name');
     const selSite = document.getElementById('sel-site-name');
     if (selName) selName.textContent = (AUTH.ROLES[session.role]?.icon || '👤') + ' ' + session.name;
     if (selSite) selSite.textContent = site ? '📍 ' + site.name : 'GA SAFETY INSPECTION';
-    // Show history button for operators
+
     if (session.role === 'operator') {
       const btn = document.getElementById('btn-history');
       if (btn) btn.style.display = '';
     }
   }
+
   DB.getPlants();
   DB.getFormTemplates();
   renderPlantList();
-  
-  // Handle URL params - pre-select plant/form
+
+  // Handle URL params
   if (urlPlant) {
     state.plantId = urlPlant;
     state.plant = DB.getPlant(urlPlant);
 
-    // If plant not in local DB (fresh device), reconstruct from URL params
     if (!state.plant) {
       const pn = params.get('pn');
       const pp = params.get('pp');
@@ -816,7 +1090,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const pf = params.get('form');
       if (pn) {
         state.plant = { id: urlPlant, name: decodeURIComponent(pn), photo: decodeURIComponent(pp||''), location: decodeURIComponent(pl||''), formType: pf || 'GA2-GEN' };
-        // Save to local DB so it persists
         const plants = DB.sget('plants') || [];
         if (!plants.find(p => p.id === urlPlant)) { plants.push(state.plant); DB.sset('plants', plants); }
       }
@@ -831,6 +1104,93 @@ document.addEventListener('DOMContentLoaded', () => {
       if (urlForm) { selectForm(urlForm); }
     }
   }
+
+  // Check for and offer to restore autosaved draft
+  const draft = loadDraft();
+  if (draft && draft.plantId === urlPlant && draft.formId && draft.answers?.length) {
+    setTimeout(() => {
+      if (confirm('You have an unfinished inspection draft. Would you like to restore it?')) {
+        state.plantId = draft.plantId;
+        state.plant = DB.getPlant(draft.plantId) || state.plant;
+        state.formId = draft.formId;
+        state.template = DB.getFormTemplate(draft.formId);
+        state.answers = draft.answers;
+        if (draft.name) { const el = document.getElementById('op-name'); if (el) el.value = draft.name; }
+        if (draft.company) { const el = document.getElementById('op-company'); if (el) el.value = draft.company; }
+        if (draft.licence) { const el = document.getElementById('op-licence'); if (el) el.value = draft.licence; }
+        if (draft.notes) { const el = document.getElementById('op-notes'); if (el) el.value = draft.notes; }
+        if (draft.date) { const el = document.getElementById('op-date'); if (el) el.value = draft.date; }
+        renderChecklist();
+        showScreen('checklist');
+        updateProgress();
+      }
+    }, 300);
+  }
+
+  updateConnStatus();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Register Service Worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+
+  // Track connection status
+  window.addEventListener('online', updateConnStatus);
+  window.addEventListener('offline', updateConnStatus);
+
+  // Handle auth — show inline modal instead of redirecting
+  if (!AUTH.isLoggedIn()) {
+    const overlay = document.getElementById('login-overlay');
+    overlay.style.display = 'flex';
+
+    // Determine site from URL ?site= param, or last used site, or show picker
+    const urlSite = params.get('site');
+    const urlTok = params.get('tok');  // base64 PIN token from QR code
+    const lastSite = AUTH.getLastSiteId();
+    const sites = AUTH.getSites().filter(s => s.active !== false);
+
+    // Decode embedded PIN token from QR URL (if present)
+    if (urlTok) {
+      try {
+        const decoded = atob(urlTok); // e.g. "op:1234"
+        if (decoded.startsWith('op:')) loPin = decoded.split(':')[1];
+      } catch {}
+    }
+
+    if (urlSite && AUTH.getSite(urlSite)) {
+      loSiteId = urlSite;
+      document.getElementById('lo-step-site').style.display = 'none';
+      document.getElementById('lo-step-pin').style.display = '';
+      // Pre-fill last operator name
+      const lastName = localStorage.getItem('ga_last_op_name') || '';
+      if (lastName) document.getElementById('lo-name').value = lastName;
+      const siteName = AUTH.getSite(urlSite)?.name || urlSite;
+      document.getElementById('lo-sub').textContent = loPin ? `Site: ${siteName} · PIN pre-filled ✓` : `Site: ${siteName}`;
+      // Update pin dots if pre-filled from tok
+      if (loPin) {
+        for (let i = 0; i < 4; i++) {
+          const d = document.getElementById('lo-d' + i);
+          if (d) { d.textContent = i < loPin.length ? '●' : '–'; d.className = 'login-pin-dot' + (i < loPin.length ? ' filled' : ''); }
+        }
+      }
+    } else if (lastSite && AUTH.getSite(lastSite) && sites.length <= 1) {
+      loSiteId = lastSite;
+      document.getElementById('lo-step-site').style.display = 'none';
+      document.getElementById('lo-step-pin').style.display = '';
+      const lastName = localStorage.getItem('ga_last_op_name') || '';
+      if (lastName) document.getElementById('lo-name').value = lastName;
+    } else {
+      loShowSiteStep();
+    }
+
+    // Focus name field
+    setTimeout(() => document.getElementById('lo-name')?.focus(), 200);
+    return;
+  }
+
+  initAfterLogin();
 });
 </script>
 </body>

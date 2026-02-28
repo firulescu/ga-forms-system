@@ -255,12 +255,26 @@
   @media (max-width: 1024px) { .two-col { grid-template-columns: 1fr; } }
   @media (max-width: 900px) {
     .app { grid-template-columns: 1fr; }
-    .sidebar { display: none; }
+    .sidebar { display: none; transform: translateX(-100%); transition: transform 0.3s; }
+    .sidebar.mobile-open { display: flex; transform: translateX(0); position: fixed; left: 0; top: 0; bottom: 0; z-index: 500; width: 260px; }
+    .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 499; }
+    .sidebar-overlay.open { display: block; }
     .main { margin-left: 0; }
     .two-col, .three-col { grid-template-columns: 1fr; }
     .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .content { padding: 16px; }
+    .hamburger { display: flex !important; }
   }
+  .hamburger { display: none; align-items: center; justify-content: center; width: 36px; height: 36px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: 18px; flex-shrink: 0; }
+
+  /* Pending sync badge */
+  .sync-badge { background: rgba(255,107,53,0.15); border: 1px solid rgba(255,107,53,0.4); color: #FF6B35; font-size: 10px; font-family: 'Space Mono', monospace; padding: 3px 8px; border-radius: 20px; display: none; }
+  .sync-badge.visible { display: inline-block; }
+
+  /* Today badge on plant cards */
+  .today-badge { font-size: 10px; font-family: 'Space Mono', monospace; font-weight: 700; padding: 2px 8px; border-radius: 6px; }
+  .today-badge.done { background: rgba(46,125,82,0.15); color: var(--accent); }
+  .today-badge.overdue { background: rgba(255,71,87,0.15); color: var(--danger); }
   @media (max-width: 500px) {
     .stats-grid { grid-template-columns: 1fr 1fr; }
     .stat-value { font-size: 28px; }
@@ -287,6 +301,8 @@
 </head>
 <body>
 <div class="app">
+  <!-- Mobile sidebar overlay -->
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
   <!-- SIDEBAR -->
   <aside class="sidebar">
     <div class="sidebar-brand">
@@ -355,9 +371,14 @@
   <!-- MAIN CONTENT -->
   <main class="main">
     <div class="topbar">
-      <div class="page-title" id="page-title">Dashboard</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button class="hamburger" onclick="openSidebar()" title="Menu">☰</button>
+        <div class="page-title" id="page-title">Dashboard</div>
+      </div>
       <div class="topbar-actions">
         <span id="current-date" class="mono" style="font-size:12px;"></span>
+        <span class="sync-badge" id="sync-badge" title="Submissions pending cloud sync">↑ pending sync</span>
+        <div id="auto-refresh-indicator" style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace;display:none;">🔄 <span id="refresh-countdown">30</span>s</div>
         <div id="role-badge" style="display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border2);padding:6px 14px;border-radius:20px;font-size:12px;font-family:'Space Mono',monospace;"></div>
         <button class="btn btn-primary" onclick="window.open('form.html','_blank')">+ New Form</button>
         <button class="btn btn-secondary" onclick="logout()" title="Logout">⏻</button>
@@ -897,7 +918,10 @@ function renderPlantCards(plants) {
         <span style="color:${color};font-weight:700;">${label}</span>
         <span style="margin-left:auto;">Last: ${UI.timeAgo(p.lastInspected)}</span>
       </div>
-      <div style="font-size:11px;color:var(--muted);margin-top:6px;font-family:'Space Mono',monospace;">${subs.length} submission${subs.length !== 1 ? 's' : ''} · ${DB.getDefectsForPlant(p.id).filter(d=>d.status==='open').length} open defect(s)</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+        <span class="today-badge ${p.lastInspected && new Date(p.lastInspected).toDateString() === new Date().toDateString() ? 'done' : 'overdue'}">${p.lastInspected && new Date(p.lastInspected).toDateString() === new Date().toDateString() ? '✓ TODAY' : '⚠ NOT DONE'}</span>
+        <span style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;">${subs.length} sub${subs.length !== 1 ? 's' : ''} · ${DB.getDefectsForPlant(p.id).filter(d=>d.status==='open').length} open defect(s)</span>
+      </div>
       <div class="plant-actions" onclick="event.stopPropagation()">
         ${p.outOfService
           ? `<button class="btn btn-primary btn-sm" onclick="returnToService('${p.id}')">✅ Return to Service</button>`
@@ -1071,18 +1095,32 @@ function renderQRCodes() {
 
 function showQR(plantId) {
   const plant = DB.getPlant(plantId);
+  const siteId = AUTH.getSiteId();
   UI.modal(
     `📱 QR Code — ${plant.name}`,
-    `<p style="color:var(--muted);font-size:13px;margin-bottom:16px;">Scan this code to open the inspection form directly on your mobile device.</p>
+    `<p style="color:var(--muted);font-size:13px;margin-bottom:16px;">Scan this code to open the inspection form directly on your mobile device. Or share the link via WhatsApp/SMS.</p>
      <div id="qr-render" style="display:flex;justify-content:center;padding:20px;background:white;border-radius:12px;margin-bottom:16px;"></div>
-     <div style="font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);text-align:center;word-break:break-all;" id="qr-url-display"></div>`,
+     <div style="font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);text-align:center;word-break:break-all;margin-bottom:14px;" id="qr-url-display"></div>
+     <button onclick="copyFormLink('${plantId}')" style="width:100%;padding:12px;background:rgba(46,125,82,0.1);border:1px solid rgba(46,125,82,0.4);border-radius:10px;color:var(--accent);font-family:'Space Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='rgba(46,125,82,0.2)'" onmouseout="this.style.background='rgba(46,125,82,0.1)'">📋 Copy Form Link</button>`,
     `<button onclick="QRGen.printLabel(DB.getPlant('${plantId}'));UI.closeModal();" style="${UI.btnStyle('primary')}">🖨️ Print Label</button>`
   );
   setTimeout(() => {
-    const url = QRGen.renderToCanvas(plantId, document.getElementById('qr-render'));
+    const url = QRGen.renderToCanvas(plantId, document.getElementById('qr-render'), siteId);
     const urlEl = document.getElementById('qr-url-display');
     if (urlEl && url) urlEl.textContent = url;
   }, 100);
+}
+
+function copyFormLink(plantId) {
+  const plant = DB.getPlant(plantId);
+  const siteId = AUTH.getSiteId();
+  const base = window.location.origin + window.location.pathname.replace('index.html', '');
+  const url = `${base}form.html?plant=${plantId}&site=${siteId}&pn=${encodeURIComponent(plant?.name||'')}&pp=${encodeURIComponent(plant?.photo||'')}&pl=${encodeURIComponent(plant?.location||'')}`;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(() => UI.toast('Form link copied! 📋 Share via WhatsApp/SMS', 'success'));
+  } else {
+    prompt('Copy this link:', url);
+  }
 }
 
 function printAllLabels() {
@@ -2548,7 +2586,76 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   renderDashboard();
+
+  // Update pending sync badge from offline queue
+  updateSyncBadge();
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'ga_pending_count') updateSyncBadge();
+  });
+
+  // Auto-refresh every 30 seconds — pull latest submissions from Firebase
+  let refreshSeconds = 30;
+  const refreshIndicator = document.getElementById('auto-refresh-indicator');
+  const refreshCountdown = document.getElementById('refresh-countdown');
+  if (typeof FIREBASE_URL !== 'undefined' && FIREBASE_URL) {
+    if (refreshIndicator) refreshIndicator.style.display = '';
+    const refreshTimer = setInterval(async () => {
+      refreshSeconds--;
+      if (refreshCountdown) refreshCountdown.textContent = refreshSeconds;
+      if (refreshSeconds <= 0) {
+        refreshSeconds = 30;
+        if (refreshCountdown) refreshCountdown.textContent = '🔄';
+        const sId = AUTH.getSiteId();
+        if (sId) {
+          FBSYNC.init(FIREBASE_URL, sId);
+          const r = await FBSYNC.pullAll();
+          if (r.ok && r.submissions > 0) {
+            updateNotifBadge();
+            const active = document.querySelector('.nav-link.active')?.dataset?.page;
+            if (active === 'dashboard' || active === 'submissions') showPage(active);
+            UI.toast(`☁️ ${r.submissions} new submission(s) synced`, 'success');
+          }
+        }
+        setTimeout(() => { if (refreshCountdown) refreshCountdown.textContent = '30'; }, 1000);
+      }
+    }, 1000);
+  }
 });
+
+// ============================================================
+// SIDEBAR MOBILE NAV
+// ============================================================
+function openSidebar() {
+  document.querySelector('.sidebar')?.classList.add('mobile-open');
+  document.getElementById('sidebar-overlay')?.classList.add('open');
+}
+function closeSidebar() {
+  document.querySelector('.sidebar')?.classList.remove('mobile-open');
+  document.getElementById('sidebar-overlay')?.classList.remove('open');
+}
+
+// Close sidebar when a nav link is clicked on mobile
+document.querySelectorAll('.nav-link').forEach(link => {
+  link.addEventListener('click', () => closeSidebar());
+});
+
+// ============================================================
+// PENDING SYNC BADGE
+// ============================================================
+function updateSyncBadge() {
+  try {
+    const count = parseInt(localStorage.getItem('ga_pending_count') || '0', 10);
+    const badge = document.getElementById('sync-badge');
+    if (!badge) return;
+    if (count > 0) {
+      badge.textContent = `↑ ${count} pending sync`;
+      badge.classList.add('visible');
+    } else {
+      badge.classList.remove('visible');
+    }
+  } catch {}
+}
+
 </script>
 </body>
 </html>
