@@ -1686,7 +1686,7 @@ function notifClick(idx) {
   DB.sset('notifications', notifs);
   updateNotifBadge();
   const dest = notifLink(n);
-  if (dest) navigateTo(dest);
+  if (dest) showPage(dest);
 }
 
 function markAllRead() {
