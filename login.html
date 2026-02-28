@@ -498,7 +498,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const plantId      = params.get('plant')  || returnParams.get('plant');
   const siteIdFromQR = params.get('site')   || returnParams.get('site');
-  const pinFromURL   = params.get('pin')    || returnParams.get('pin');
+  const tok          = params.get('tok')    || returnParams.get('tok');
+  const pinFromURL   = tok ? (atob(tok).startsWith('op:') ? atob(tok).slice(3) : null) : null;
 
   const sites = AUTH.getSites().filter(s => s.active !== false);
   const users = AUTH.getUsers().filter(u => u.active !== false);

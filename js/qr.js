@@ -3,7 +3,9 @@ const QRGen = {
   _url(plantId, siteId) {
     const base = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}`;
     const pin = (typeof AUTH !== 'undefined') ? (AUTH.getSite(siteId)?.operatorPin || '') : '';
-    return `${base}form.html?plant=${plantId}&site=${siteId}&pin=${pin}`;
+    // Encode PIN so it's not plaintext on printed labels
+    const tok = pin ? btoa('op:' + pin) : '';
+    return `${base}form.html?plant=${plantId}&site=${siteId}${tok?'&tok='+tok:''}`;
   },
 
   // Generate QR code as data URL for a plant
