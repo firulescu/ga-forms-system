@@ -494,19 +494,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Extract params — check both direct params and those inside ?return=
   const returnUrl = params.get('return') || '';
-  const returnParams = returnUrl ? new URLSearchParams(new URL(decodeURIComponent(returnUrl)).search) : new URLSearchParams();
+  let returnParams = new URLSearchParams();
+  if (returnUrl) {
+    try {
+      const decoded = decodeURIComponent(returnUrl);
+      const qIndex = decoded.indexOf('?');
+      if (qIndex >= 0) returnParams = new URLSearchParams(decoded.slice(qIndex + 1));
+    } catch(e) {}
+  }
 
   const plantId      = params.get('plant')  || returnParams.get('plant');
   const siteIdFromQR = params.get('site')   || returnParams.get('site');
   const tok          = params.get('tok')    || returnParams.get('tok');
-  const pinFromURL   = tok ? (atob(tok).startsWith('op:') ? atob(tok).slice(3) : null) : null;
+  let pinFromURL = null;
+  if (tok) { try { const d = atob(tok); if (d.startsWith('op:')) pinFromURL = d.slice(3); } catch(e) {} }
 
   const sites = AUTH.getSites().filter(s => s.active !== false);
   const users = AUTH.getUsers().filter(u => u.active !== false);
 
-  // Fresh device with QR scan — bootstrap minimal site data so operator can log in
-  if ((!sites.length || !users.length) && plantId && siteIdFromQR) {
-    const placeholderSite = { id: siteIdFromQR, name: 'Site', address: '', operatorPin: pinFromURL, active: true };
+  // Fresh device OR site exists but has no PIN — bootstrap from QR token
+  const existingSite = siteIdFromQR ? AUTH.getSite(siteIdFromQR) : null;
+  const needsBootstrap = plantId && siteIdFromQR && (
+    (!sites.length || !users.length) ||
+    (existingSite && !existingSite.operatorPin && pinFromURL)
+  );
+  if (needsBootstrap) {
+    const placeholderSite = { id: siteIdFromQR, name: existingSite?.name || 'Site', address: existingSite?.address || '', operatorPin: pinFromURL, active: true };
     AUTH.saveSite(placeholderSite);
     selectedSite = placeholderSite;
     goStep(3, 'operator');
