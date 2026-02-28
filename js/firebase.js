@@ -1,6 +1,6 @@
 // GA Forms API Sync Layer - Hetzner Server
 const FBSYNC = {
-  _base: "http://46.225.83.168:3000",
+  _base: "https://46.225.83.168.nip.io",
   _siteId: "",
 
   init(url, siteId) { this._siteId = siteId; },
