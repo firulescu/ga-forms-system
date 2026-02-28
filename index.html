@@ -7,6 +7,14 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+  // Fallback if cdnjs fails to load QRCode library
+  if (typeof QRCode === 'undefined') {
+    var s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js';
+    document.head.appendChild(s);
+  }
+</script>
 <script src="js/data.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/ui.js"></script>
@@ -1056,9 +1064,9 @@ function renderQRCodes() {
   setTimeout(() => {
     plants.forEach(p => {
       const el = document.getElementById('qr-mini-' + p.id);
-      if (el) QRGen.renderToCanvas(p.id, el);
+      if (el) QRGen.renderToCanvas(p.id, el, true);
     });
-  }, 100);
+  }, 150);
 }
 
 function showQR(plantId) {

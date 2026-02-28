@@ -4,14 +4,14 @@ const QRGen = {
     const base = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}`;
     const pin = (typeof AUTH !== 'undefined') ? (AUTH.getSite(siteId)?.operatorPin || '') : '';
     const tok = pin ? btoa('op:' + pin) : '';
-    // Get plant info to embed in URL so fresh devices can pre-select
     const plant = (typeof DB !== 'undefined') ? DB.getPlant(plantId) : null;
     const formType = plant?.formType || '';
-    const plantName = plant ? encodeURIComponent(plant.name) : '';
-    const plantPhoto = plant ? encodeURIComponent(plant.photo || '') : '';
-    const plantLoc = plant ? encodeURIComponent(plant.location || '') : '';
-    const siteName = (typeof AUTH !== 'undefined') ? encodeURIComponent(AUTH.getSite(siteId)?.name || '') : '';
-    return `${base}form.html?plant=${plantId}&site=${siteId}${tok?'&tok='+tok:''}${formType?'&form='+formType:''}${plantName?'&pn='+plantName:''}${plantPhoto?'&pp='+plantPhoto:''}${plantLoc?'&pl='+plantLoc:''}${siteName?'&sn='+siteName:''}`;
+    // Keep plant name short — truncate to 20 chars to keep QR scannable
+    const shortName = plant ? encodeURIComponent(plant.name.substring(0, 20)) : '';
+    const shortLoc  = plant ? encodeURIComponent((plant.location||'').substring(0, 20)) : '';
+    const shortSite = (typeof AUTH !== 'undefined') ? encodeURIComponent((AUTH.getSite(siteId)?.name||'').substring(0,20)) : '';
+    const photo = plant ? encodeURIComponent(plant.photo || '') : '';
+    return `${base}form.html?plant=${plantId}&site=${siteId}${tok?'&tok='+tok:''}${formType?'&form='+formType:''}${shortName?'&pn='+shortName:''}${photo?'&pp='+photo:''}${shortLoc?'&pl='+shortLoc:''}${shortSite?'&sn='+shortSite:''}`;
   },
 
   // Generate QR code as data URL for a plant
@@ -22,16 +22,25 @@ const QRGen = {
   },
 
   // Render QR to canvas element
-  renderToCanvas(plantId, canvasEl) {
+  renderToCanvas(plantId, canvasEl, small) {
     const siteId = (typeof AUTH !== 'undefined') ? AUTH.getSiteId() : '';
     const url = this._url(plantId, siteId);
-    if (typeof QRCode === 'undefined') { console.warn('QRCode library not loaded'); return; }
-    canvasEl.innerHTML = '';
-    new QRCode(canvasEl, {
-      text: url, width: 200, height: 200,
-      colorDark: '#0A0E1A', colorLight: '#ffffff',
-      correctLevel: QRCode.CorrectLevel.H
-    });
+    if (typeof QRCode === 'undefined') {
+      setTimeout(() => { try { this.renderToCanvas(plantId, canvasEl, small); } catch(e){} }, 800);
+      return url;
+    }
+    try {
+      canvasEl.innerHTML = '';
+      const size = small ? 120 : 200;
+      new QRCode(canvasEl, {
+        text: url, width: size, height: size,
+        colorDark: '#0A0E1A', colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    } catch(e) {
+      console.warn('QR render error:', e);
+      canvasEl.innerHTML = '<div style="width:120px;height:120px;display:flex;align-items:center;justify-content:center;color:#666;font-size:10px;border:1px solid #444;border-radius:4px;">QR Error</div>';
+    }
     return url;
   },
 
