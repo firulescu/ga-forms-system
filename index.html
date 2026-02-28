@@ -328,8 +328,8 @@
         <span class="icon">🔔</span> Notifications
         <span class="nav-badge" id="notif-badge" style="display:none">0</span>
       </a>
-      <a class="nav-link" id="nav-pin-management" data-page="pin-management" onclick="showPage('pin-management')" style="display:none;">
-        <span class="icon">🔐</span> PIN Management
+      <a class="nav-link" id="nav-admin-panel" data-page="admin-panel" onclick="showPage('admin-panel')" style="display:none;">
+        <span class="icon">⚙️</span> Admin Panel
       </a>
       <a class="nav-link" data-page="settings" onclick="showPage('settings')">
         <span class="icon">⚙️</span> Settings
@@ -640,12 +640,31 @@
         <div id="defect-list"></div>
       </div>
 
-      <!-- ===== PIN MANAGEMENT PAGE ===== -->
-      <div class="page" id="page-pin-management">
-        <div style="margin-bottom:24px;">
-          <div style="font-size:13px;color:var(--muted);">Manage access PINs for each role. Only Admin can change all PINs.</div>
+      <!-- ===== ADMIN PANEL ===== -->
+      <div class="page" id="page-admin-panel">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;" id="admin-grid">
+          <!-- Sites column -->
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+              <div style="font-size:16px;font-weight:800;">🏗️ Sites</div>
+              <button class="btn btn-primary btn-sm" onclick="openAddSite()">+ Add Site</button>
+            </div>
+            <div id="admin-sites"></div>
+          </div>
+          <!-- Users column -->
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+              <div style="font-size:16px;font-weight:800;">👥 Users</div>
+              <div style="display:flex;gap:8px;">
+                <select class="form-input form-select" id="user-site-filter" onchange="renderAdminUsers()" style="font-size:12px;padding:6px 10px;width:auto;">
+                  <option value="all">All Sites</option>
+                </select>
+                <button class="btn btn-primary btn-sm" onclick="openAddUser()">+ Add User</button>
+              </div>
+            </div>
+            <div id="admin-users"></div>
+          </div>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px;" id="pin-cards"></div>
       </div>
 
     </div><!-- /content -->
@@ -673,14 +692,23 @@ function initRoleBadge() {
   const session = AUTH.getSession();
   const role = AUTH.getRoleInfo();
   if (!session || !role) return;
+  const site = AUTH.getSite(session.siteId);
   document.getElementById('role-badge').innerHTML =
     `<span style="color:${role.color};">${role.icon}</span>
-     <span style="color:var(--text);">${session.name}</span>
-     <span style="color:${role.color};font-size:10px;">${role.label.toUpperCase()}</span>`;
+     <div style="display:flex;flex-direction:column;gap:1px;">
+       <span style="color:var(--text);font-size:12px;">${session.name}</span>
+       ${site ? `<span style="color:var(--muted);font-size:10px;">📍 ${site.name}</span>` : ''}
+     </div>
+     <span style="color:${role.color};font-size:10px;letter-spacing:1px;">${role.label.toUpperCase()}</span>`;
 
-  // Show PIN management for admin only
-  if (session.role === 'admin') {
-    document.getElementById('nav-pin-management').style.display = '';
+  // Show admin panel for admin and project_manager
+  if (['admin','project_manager'].includes(session.role)) {
+    const adminNav = document.getElementById('nav-admin-panel'); if(adminNav) adminNav.style.display = '';
+  }
+  // Show defects nav for non-operators
+  if (session.role !== 'operator') {
+    const defNav = document.querySelector('[data-page="defects"]');
+    if (defNav) defNav.style.display = '';
   }
 
   // Hide nav items based on role permissions
@@ -709,7 +737,7 @@ const pageTitles = {
   'form-templates': '📝 Form Templates',
   compliance: '✅ Compliance',
   notifications: '🔔 Notifications',
-  'pin-management': '🔐 PIN Management',
+  'admin-panel': '⚙️ Admin Panel',
   settings: '⚙️ Settings',
 };
 
@@ -719,7 +747,7 @@ function showPage(page) {
   document.getElementById('page-' + page).classList.add('active');
   document.querySelector(`[data-page="${page}"]`).classList.add('active');
   document.getElementById('page-title').textContent = pageTitles[page] || page;
-  const renders = { dashboard: renderDashboard, plants: renderPlants, 'qr-codes': renderQRCodes, submissions: renderSubmissions, 'form-templates': renderTemplates, compliance: renderCompliance, defects: renderDefects, notifications: renderNotifications, settings: renderSettings, 'pin-management': renderPinManagement };
+  const renders = { dashboard: renderDashboard, plants: renderPlants, 'qr-codes': renderQRCodes, submissions: renderSubmissions, 'form-templates': renderTemplates, compliance: renderCompliance, defects: renderDefects, notifications: renderNotifications, settings: renderSettings, 'admin-panel': renderAdminPanel };
   if (renders[page]) renders[page]();
 }
 
@@ -1838,6 +1866,306 @@ function printWeeklySummary() {
   <script>setTimeout(()=>window.print(),600)<\/script></body></html>`);
 }
 
+
+// ============================================================
+// ADMIN PANEL — Sites & Users
+// ============================================================
+function renderAdminPanel() {
+  const session   = AUTH.getSession();
+  const canManage = ['admin','project_manager'].includes(session?.role);
+  if (!canManage) {
+    document.getElementById('admin-grid').innerHTML =
+      '<div style="color:var(--muted);padding:40px;text-align:center;">⛔ Admin or Project Manager access required.</div>';
+    return;
+  }
+  populateSiteFilter();
+  renderAdminSites();
+  renderAdminUsers();
+}
+
+function populateSiteFilter() {
+  const sel   = document.getElementById('user-site-filter');
+  if (!sel) return;
+  const sites = AUTH.getSites();
+  sel.innerHTML = '<option value="all">All Sites</option>' +
+    sites.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+}
+
+// ── SITES ──────────────────────────────────────────────────
+function renderAdminSites() {
+  const sites   = AUTH.getSites();
+  const session = AUTH.getSession();
+  const isAdmin = session?.role === 'admin';
+  const wrap    = document.getElementById('admin-sites');
+  if (!wrap) return;
+  wrap.innerHTML = sites.map(s => {
+    const users = AUTH.getUsersForSite(s.id);
+    const active = users.filter(u => u.active !== false).length;
+    return `<div style="background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:16px;margin-bottom:10px;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:700;">${s.name}</div>
+          <div style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;margin-top:3px;">📍 ${s.address||'No address'}</div>
+          <div style="font-size:11px;color:var(--accent);margin-top:4px;font-family:'Space Mono',monospace;">${active} active user${active!==1?'s':''} · ${s.id}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          ${isAdmin ? `<button class="btn btn-secondary btn-sm" onclick="openEditSite('${s.id}')">✏️</button>` : ''}
+          ${isAdmin && sites.length > 1 ? `<button class="btn btn-danger btn-sm" onclick="confirmDeleteSite('${s.id}')">🗑️</button>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openAddSite() {
+  if (AUTH.getRole() !== 'admin') { UI.toast('Admin only','error'); return; }
+  UI.modal('🏗️ New Site',
+    `<div class="form-group"><label class="form-label">SITE NAME *</label>
+      <input type="text" class="form-input" id="s-name" placeholder="e.g. Cork Road Project"></div>
+    <div class="form-group"><label class="form-label">ADDRESS</label>
+      <input type="text" class="form-input" id="s-addr" placeholder="e.g. Cork, Ireland"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSite(null)">Create Site</button>
+    </div>`
+  );
+}
+
+function openEditSite(id) {
+  const s = AUTH.getSite(id);
+  UI.modal('✏️ Edit Site',
+    `<div class="form-group"><label class="form-label">SITE NAME *</label>
+      <input type="text" class="form-input" id="s-name" value="${s.name}"></div>
+    <div class="form-group"><label class="form-label">ADDRESS</label>
+      <input type="text" class="form-input" id="s-addr" value="${s.address||''}"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSite('${id}')">Save Changes</button>
+    </div>`
+  );
+}
+
+function saveSite(id) {
+  const name = document.getElementById('s-name')?.value.trim();
+  const addr = document.getElementById('s-addr')?.value.trim();
+  if (!name) { UI.toast('Site name required','error'); return; }
+  AUTH.saveSite({ id: id||null, name, address: addr });
+  UI.toast(id ? 'Site updated' : 'Site created', 'success');
+  closeModal();
+  renderAdminSites();
+  populateSiteFilter();
+}
+
+function confirmDeleteSite(id) {
+  const s = AUTH.getSite(id);
+  const userCount = AUTH.getUsersForSite(id).length;
+  if (!confirm(`Delete "${s.name}"?\n\nThis will also remove ${userCount} user assignment(s). Plant data and submissions will remain in storage but won't be accessible. This cannot be undone.`)) return;
+  const res = AUTH.deleteSite(id);
+  if (!res.ok) { UI.toast(res.error,'error'); return; }
+  UI.toast('Site deleted','warning');
+  renderAdminSites();
+  renderAdminUsers();
+  populateSiteFilter();
+}
+
+// ── USERS ──────────────────────────────────────────────────
+function renderAdminUsers() {
+  const session  = AUTH.getSession();
+  const isAdmin  = session?.role === 'admin';
+  const isPM     = session?.role === 'project_manager';
+  const filterEl = document.getElementById('user-site-filter');
+  const filter   = filterEl?.value || 'all';
+  const myUser   = AUTH.getUser(session?.userId);
+
+  let users = AUTH.getUsers();
+
+  // PM can only see users on their own sites
+  if (isPM && !isAdmin) {
+    const mySites = myUser?.siteIds || [];
+    users = users.filter(u => (u.siteIds||[]).some(sid => mySites.includes(sid)));
+    // PM cannot see/edit admins or other PMs
+    users = users.filter(u => !['admin','project_manager'].includes(u.role) || u.id === session.userId);
+  }
+
+  if (filter !== 'all') {
+    users = users.filter(u => u.role === 'admin' || (u.siteIds||[]).includes(filter));
+  }
+
+  const wrap = document.getElementById('admin-users');
+  if (!wrap) return;
+  if (!users.length) {
+    wrap.innerHTML = '<div style="color:var(--muted);text-align:center;padding:30px;">No users found.</div>';
+    return;
+  }
+
+  const sites = AUTH.getSites();
+  wrap.innerHTML = users.map(u => {
+    const ri = AUTH.ROLES[u.role] || { icon:'👤', color:'#888', label:u.role };
+    const isMe = u.id === session?.userId;
+    const isInactive = u.active === false;
+    const siteLabels = u.role === 'admin' ? '<span style="color:var(--accent);font-size:10px;">All sites</span>' :
+      (u.siteIds||[]).map(sid => {
+        const s = sites.find(x=>x.id===sid);
+        return s ? `<span style="background:rgba(46,125,82,0.1);color:var(--accent);padding:1px 7px;border-radius:10px;font-size:10px;font-family:\'Space Mono\',monospace;">${s.name}</span>` : '';
+      }).join(' ');
+
+    const canEdit   = isAdmin || (isPM && !['admin','project_manager'].includes(u.role));
+    const canDelete = canEdit && !isMe;
+
+    return `<div style="background:var(--surface2);border:1px solid ${isInactive?'rgba(255,71,87,0.2)':isMe?'rgba(46,125,82,0.3)':'var(--border2)'};border-radius:12px;padding:14px 16px;margin-bottom:8px;opacity:${isInactive?'0.6':'1'};">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="font-size:18px;">${ri.icon}</span>
+            <span style="font-size:14px;font-weight:700;">${u.name}</span>
+            ${isMe ? '<span style="font-size:10px;color:var(--accent);font-family:\'Space Mono\',monospace;">(you)</span>' : ''}
+            ${isInactive ? '<span style="font-size:10px;color:var(--danger);font-family:\'Space Mono\',monospace;">INACTIVE</span>' : ''}
+          </div>
+          <div style="font-size:11px;color:${ri.color};font-family:\'Space Mono\',monospace;margin-top:3px;">${ri.label}</div>
+          <div style="margin-top:5px;display:flex;gap:4px;flex-wrap:wrap;">${siteLabels}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:4px;font-family:\'Space Mono\',monospace;">PIN: ${'●'.repeat(u.pin.length)} · ${u.id}</div>
+        </div>
+        ${canEdit ? `<div style="display:flex;gap:5px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;">
+          <button class="btn btn-secondary btn-sm" onclick="openEditUser('${u.id}')">✏️</button>
+          ${canDelete ? `<button class="btn btn-secondary btn-sm" onclick="toggleUserActive('${u.id}')">${isInactive?'✅':'⏸️'}</button>` : ''}
+          ${canDelete ? `<button class="btn btn-danger btn-sm" onclick="confirmDeleteUser('${u.id}')">🗑️</button>` : ''}
+        </div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openAddUser() {
+  const session = AUTH.getSession();
+  const isAdmin = session?.role === 'admin';
+  const isPM    = session?.role === 'project_manager';
+  const sites   = AUTH.getSites();
+  const myUser  = AUTH.getUser(session?.userId);
+  const mySites = myUser?.siteIds || [];
+
+  // Roles PM can create
+  const allowedRoles = isAdmin
+    ? Object.entries(AUTH.ROLES)
+    : Object.entries(AUTH.ROLES).filter(([k]) => !['admin','project_manager'].includes(k));
+
+  const siteCheckboxes = sites.map(s => {
+    const disabled = !isAdmin && !mySites.includes(s.id) ? 'disabled' : '';
+    return `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;">
+      <input type="checkbox" class="site-check" value="${s.id}" ${!isAdmin && mySites.length===1 ? 'checked' : ''} ${disabled}>
+      <span style="font-size:13px;">${s.name}</span>
+    </label>`;
+  }).join('');
+
+  UI.modal('👤 Add User',
+    `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="form-group" style="grid-column:1/-1"><label class="form-label">FULL NAME *</label>
+        <input type="text" class="form-input" id="u-name" placeholder="e.g. John Smith"></div>
+      <div class="form-group"><label class="form-label">ROLE *</label>
+        <select class="form-input" id="u-role">
+          ${allowedRoles.map(([k,v])=>`<option value="${k}">${v.icon} ${v.label}</option>`).join('')}
+        </select></div>
+      <div class="form-group"><label class="form-label">PERSONAL PIN * (4-6 digits)</label>
+        <input type="text" class="form-input" id="u-pin" placeholder="e.g. 7291" maxlength="6" inputmode="numeric" pattern="[0-9]*"></div>
+    </div>
+    <div class="form-group"><label class="form-label">ASSIGN TO SITES</label>
+      <div style="background:var(--surface2);border-radius:10px;padding:10px 14px;">${siteCheckboxes}</div>
+    </div>
+    <div style="background:rgba(255,183,0,0.08);border:1px solid rgba(255,183,0,0.2);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:var(--muted);">
+      💡 Each person gets a unique PIN. They use it to log in — no username needed.
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveUser(null)">Add User</button>
+    </div>`
+  );
+}
+
+function openEditUser(id) {
+  const u       = AUTH.getUser(id);
+  const session = AUTH.getSession();
+  const isAdmin = session?.role === 'admin';
+  const sites   = AUTH.getSites();
+
+  const allowedRoles = isAdmin
+    ? Object.entries(AUTH.ROLES)
+    : Object.entries(AUTH.ROLES).filter(([k]) => !['admin','project_manager'].includes(k));
+
+  const siteCheckboxes = sites.map(s => {
+    const checked = u.role === 'admin' || (u.siteIds||[]).includes(s.id);
+    return `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;">
+      <input type="checkbox" class="site-check" value="${s.id}" ${checked?'checked':''}>
+      <span style="font-size:13px;">${s.name}</span>
+    </label>`;
+  }).join('');
+
+  UI.modal(`✏️ Edit — ${u.name}`,
+    `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="form-group" style="grid-column:1/-1"><label class="form-label">FULL NAME *</label>
+        <input type="text" class="form-input" id="u-name" value="${u.name}"></div>
+      <div class="form-group"><label class="form-label">ROLE</label>
+        <select class="form-input" id="u-role" ${!isAdmin && ['admin','project_manager'].includes(u.role) ? 'disabled' : ''}>
+          ${allowedRoles.map(([k,v])=>`<option value="${k}" ${u.role===k?'selected':''}>${v.icon} ${v.label}</option>`).join('')}
+        </select></div>
+      <div class="form-group"><label class="form-label">CHANGE PIN (leave blank to keep)</label>
+        <input type="text" class="form-input" id="u-pin" placeholder="New PIN (4-6 digits)" maxlength="6" inputmode="numeric"></div>
+    </div>
+    <div class="form-group"><label class="form-label">SITES</label>
+      <div style="background:var(--surface2);border-radius:10px;padding:10px 14px;">${siteCheckboxes}</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveUser('${id}')">Save</button>
+    </div>`
+  );
+}
+
+function saveUser(id) {
+  const name = document.getElementById('u-name')?.value.trim();
+  const role = document.getElementById('u-role')?.value;
+  const pinRaw = document.getElementById('u-pin')?.value.trim();
+  const siteIds = [...document.querySelectorAll('.site-check:checked')].map(el=>el.value);
+
+  if (!name) { UI.toast('Name is required','error'); return; }
+  if (!role)  { UI.toast('Role is required','error'); return; }
+
+  let pin = pinRaw;
+  if (!id) {
+    // New user — PIN required
+    if (!pin) { UI.toast('PIN is required','error'); return; }
+  } else {
+    // Editing — keep existing if blank
+    if (!pin) pin = AUTH.getUser(id)?.pin;
+  }
+  if (!/^\d{4,6}$/.test(pin)) { UI.toast('PIN must be 4–6 digits','error'); return; }
+
+  const user = { id: id||null, name, role, pin, siteIds };
+  const res  = AUTH.saveUser(user);
+  if (!res.ok) { UI.toast(res.error,'error'); return; }
+
+  UI.toast(id ? 'User updated' : `${name} added`, 'success');
+  closeModal();
+  renderAdminUsers();
+}
+
+function toggleUserActive(id) {
+  const u   = AUTH.getUser(id);
+  const act = u?.active !== false;
+  if (!confirm(`${act ? 'Deactivate' : 'Reactivate'} ${u?.name}? They will ${act ? 'no longer be able to log in' : 'be able to log in again'}.`)) return;
+  const res = AUTH.toggleUserActive(id);
+  if (!res.ok) { UI.toast(res.error,'error'); return; }
+  UI.toast(`${u?.name} ${res.active ? 'reactivated' : 'deactivated'}`, 'warning');
+  renderAdminUsers();
+}
+
+function confirmDeleteUser(id) {
+  const u = AUTH.getUser(id);
+  if (!confirm(`Permanently delete ${u?.name}?\n\nTheir past submissions will remain but they won't be able to log in.`)) return;
+  const res = AUTH.deleteUser(id);
+  if (!res.ok) { UI.toast(res.error,'error'); return; }
+  UI.toast(`${u?.name} deleted`,'warning');
+  renderAdminUsers();
+}
+
 // SETTINGS
 // ============================================================
 function renderSettings() {
@@ -1923,54 +2251,6 @@ function resetData() { hardResetData(); }
 // ============================================================
 // PIN MANAGEMENT
 // ============================================================
-function renderPinManagement() {
-  const session = AUTH.getSession();
-  const isAdmin = ['admin','project_manager'].includes(session?.role);
-  const roles = [
-    { key: 'admin',           icon: '👑', label: 'Admin',           color: '#C9A84C', desc: 'Full system access' },
-    { key: 'project_manager', icon: '📋', label: 'Project Manager', color: '#FF6B35', desc: 'Full access — same as Admin' },
-    { key: 'site_manager',    icon: '🏗️', label: 'Site Manager',    color: '#7B61FF', desc: 'Dashboard & plant management' },
-    { key: 'safety_officer',  icon: '🛡️', label: 'Safety Officer',  color: '#00C896', desc: 'Compliance & submissions' },
-    { key: 'operator',        icon: '👷', label: 'Operator',        color: '#6B7A99', desc: 'Form filling only' },
-  ];
-  const pins = AUTH.getPins();
-  const defaults = AUTH.DEFAULT_PINS;
-
-  document.getElementById('pin-cards').innerHTML = roles.map(r => {
-    const isDefault = pins[r.key] === defaults[r.key];
-    const isCurrentRole = session?.role === r.key;
-    const canChange = isAdmin || isCurrentRole;
-    return `<div class="card">
-      <div class="card-header">
-        <div style="display:flex;align-items:center;gap:12px;">
-          <span style="font-size:28px;">${r.icon}</span>
-          <div>
-            <div style="font-size:16px;font-weight:700;color:${r.color};">${r.label}</div>
-            <div style="font-size:12px;color:var(--muted);">${r.desc}</div>
-          </div>
-        </div>
-        ${isDefault ? `<span style="background:rgba(255,183,0,0.1);color:#FFB800;border:1px solid rgba(255,183,0,0.3);padding:3px 10px;border-radius:20px;font-size:10px;font-family:'Space Mono',monospace;">DEFAULT PIN</span>` : `<span style="background:rgba(46,125,82,0.1);color:var(--accent);border:1px solid rgba(0,200,150,0.3);padding:3px 10px;border-radius:20px;font-size:10px;font-family:'Space Mono',monospace;">CUSTOM PIN</span>`}
-      </div>
-      <div class="card-body">
-        ${canChange ? `
-        <div class="form-group">
-          <label class="form-label">${isAdmin && !isCurrentRole ? 'SET NEW PIN (Admin Override)' : 'CURRENT PIN'}</label>
-          ${!isAdmin || isCurrentRole ? `<input type="password" class="form-input" id="pin-old-${r.key}" placeholder="Current PIN" inputmode="numeric" maxlength="6">` : ''}
-        </div>
-        <div class="form-group">
-          <label class="form-label">NEW PIN (min 4 digits)</label>
-          <input type="password" class="form-input" id="pin-new-${r.key}" placeholder="New PIN" inputmode="numeric" maxlength="6">
-        </div>
-        <div class="form-group">
-          <label class="form-label">CONFIRM NEW PIN</label>
-          <input type="password" class="form-input" id="pin-confirm-${r.key}" placeholder="Confirm PIN" inputmode="numeric" maxlength="6">
-        </div>
-        <button class="btn btn-primary" onclick="changePinFor('${r.key}', ${isAdmin && !isCurrentRole})">🔐 Update PIN</button>
-        ` : `<p style="color:var(--muted);font-size:13px;">Only Admin or the role holder can change this PIN.</p>`}
-      </div>
-    </div>`;
-  }).join('');
-}
 
 function changePinFor(role, adminOverride) {
   const newPin = document.getElementById(`pin-new-${role}`)?.value;

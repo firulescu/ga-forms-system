@@ -162,6 +162,21 @@
   .result-value { font-family: 'Space Mono', monospace; font-size: 24px; font-weight: 700; }
   .result-label { font-size: 11px; color: var(--muted); margin-top: 4px; letter-spacing: 1px; }
 
+
+  /* HISTORY SCREEN */
+  .hist-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px 0; }
+  .hist-title  { font-size:18px; font-weight:800; }
+  .hist-sub    { font-size:12px; color:var(--muted); margin-top:2px; }
+  .hist-list   { padding:16px 20px 100px; }
+  .hist-item   { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px 16px; margin-bottom:10px; }
+  .hist-item-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+  .hist-plant  { font-size:14px; font-weight:700; }
+  .hist-form   { font-family:'Space Mono',monospace; font-size:12px; padding:2px 8px; border-radius:6px; }
+  .hist-meta   { font-size:11px; color:var(--muted); font-family:'Space Mono',monospace; }
+  .hist-score  { font-family:'Space Mono',monospace; font-size:22px; font-weight:700; }
+  .hist-empty  { text-align:center; padding:60px 20px; color:var(--muted); }
+  .hist-empty span { font-size:40px; display:block; margin-bottom:12px; }
+
   /* STEP INDICATOR */
   .steps { display: flex; align-items: center; gap: 0; margin: 20px 20px 0; }
   .step { flex: 1; text-align: center; position: relative; }
@@ -182,13 +197,35 @@
 </head>
 <body>
 
+<!-- SCREEN: MY SUBMISSIONS HISTORY -->
+<div id="screen-history" style="display:none;">
+  <div class="header">
+    <div class="header-info">
+      <div class="header-title" id="hist-user-name">My Submissions</div>
+      <div class="header-sub" id="hist-site-name"></div>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="showScreen('select')" style="margin:0 16px 0 0;flex-shrink:0;">+ New Form</button>
+  </div>
+  <div class="hist-header">
+    <div>
+      <div class="hist-title">My Submissions</div>
+      <div class="hist-sub">Your inspection history on this site</div>
+    </div>
+  </div>
+  <div class="hist-list" id="hist-list"></div>
+  <div class="sticky-footer">
+    <button class="btn-full btn-primary" onclick="showScreen('select')">Start New Inspection</button>
+  </div>
+</div>
+
 <!-- STEP: SELECT PLANT & FORM -->
 <div id="screen-select">
   <div class="header">
     <div class="header-info">
-      <div class="header-title">🛡️ Robert Quinn Ltd</div>
-      <div class="header-sub">GA SAFETY INSPECTION</div>
+      <div class="header-title" id="sel-user-name">🛡️ GA Forms</div>
+      <div class="header-sub" id="sel-site-name">SAFETY INSPECTION</div>
     </div>
+    <button id="btn-history" class="btn btn-secondary btn-sm" onclick="showHistory()" style="margin:0 16px 0 0;flex-shrink:0;display:none;">📋 My Forms</button>
   </div>
 
   <div id="steps-indicator"></div>
@@ -209,8 +246,9 @@
     </div>
   </div>
 
-  <div class="sticky-footer">
-    <button class="btn-full btn-secondary2" id="btn-back-select" onclick="goBackSelect()" style="display:none;">← Back</button>
+  <div class="sticky-footer" style="display:flex;gap:10px;">
+    <button class="btn-full btn-secondary2" id="btn-back-select" onclick="goBackSelect()" style="display:none;max-width:80px;">← Back</button>
+    <button class="btn-full btn-secondary2" onclick="logout()" style="max-width:60px;" title="Log out">⏻</button>
     <button class="btn-full btn-primary" id="btn-next-select" onclick="nextSelect()" disabled>Next →</button>
   </div>
 </div>
@@ -628,6 +666,61 @@ function startNew() {
 // ============================================================
 // INIT
 // ============================================================
+
+// ============================================================
+// HISTORY & LOGOUT
+// ============================================================
+function showHistory() {
+  showScreen('history');
+  renderHistory();
+}
+
+function renderHistory() {
+  const session = AUTH.getSession();
+  const userName = session?.name || 'Operator';
+  const site = AUTH.getSite(session?.siteId);
+
+  document.getElementById('hist-user-name').textContent = '👷 ' + userName;
+  document.getElementById('hist-site-name').textContent = site ? '📍 ' + site.name : '';
+
+  // Get all submissions for this user on this site
+  const allSubs = DB.getSubmissions();
+  const mySubs  = allSubs.filter(s => s.operatorName === userName).sort((a,b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+
+  const list = document.getElementById('hist-list');
+  if (!mySubs.length) {
+    list.innerHTML = `<div class="hist-empty"><span>📋</span>No submissions yet.<br>Complete your first inspection to see your history here.</div>`;
+    return;
+  }
+
+  list.innerHTML = mySubs.map(s => {
+    const score = Math.round((s.passed / s.total) * 100);
+    const color = score === 100 ? '#00C896' : score >= 90 ? '#FF6B35' : '#FF4757';
+    const plant = DB.getPlant(s.plantId);
+    const date  = new Date(s.submittedAt).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+    const time  = new Date(s.submittedAt).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+    const failBadge = s.failed > 0 ? `<span style="background:rgba(255,71,87,0.12);color:var(--danger);padding:2px 8px;border-radius:6px;font-size:10px;font-family:'Space Mono',monospace;">${s.failed} FAIL${s.failed!==1?'S':''}</span>` : '';
+    return `<div class="hist-item">
+      <div class="hist-item-top">
+        <div>
+          <div class="hist-plant">${plant?.photo||'🏗️'} ${plant?.name||s.plantId}</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
+            <span class="hist-form" style="background:rgba(46,125,82,0.1);color:var(--accent);">${s.formId}</span>
+            ${failBadge}
+          </div>
+        </div>
+        <div class="hist-score" style="color:${color};">${score}%</div>
+      </div>
+      <div class="hist-meta">${date} · ${time} · ${s.passed}/${s.total} passed</div>
+    </div>`;
+  }).join('');
+}
+
+function logout() {
+  AUTH.clearSession();
+  window.location.href = 'login.html';
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   // Auth guard - operators and above can fill forms
   if (!AUTH.isLoggedIn()) {
@@ -640,6 +733,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const session = AUTH.getSession();
   if (session) {
     document.getElementById('op-name').value = session.name || '';
+    // Show name + site in header
+    const selName = document.getElementById('sel-user-name');
+    const selSite = document.getElementById('sel-site-name');
+    const site = AUTH.getSite(session.siteId);
+    if (selName) selName.textContent = (AUTH.ROLES[session.role]?.icon || '👤') + ' ' + session.name;
+    if (selSite) selSite.textContent = site ? '📍 ' + site.name : 'GA SAFETY INSPECTION';
+    // Show history button for operators (others use index.html)
+    if (session.role === 'operator') {
+      const btn = document.getElementById('btn-history');
+      if (btn) btn.style.display = '';
+    }
   }
   DB.getPlants();
   DB.getFormTemplates();
