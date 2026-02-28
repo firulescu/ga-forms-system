@@ -1,2462 +1,371 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Robert Quinn Ltd — GA Forms Dashboard</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="js/data.js"></script>
-<script src="js/auth.js"></script>
-<script src="js/ui.js"></script>
-<script src="js/qr.js"></script>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+<meta http-equiv="Pragma" content="no-cache"/>
+<meta http-equiv="Expires" content="0"/>
+<title>Family Rescue: 99 Nights — Fresh Build</title>
 <style>
-  :root {
-    --bg: #060A14;
-    --surface: #0D1421;
-    --surface2: #111827;
-    --border: #1A2333;
-    --border2: #243044;
-    --text: #E8EDF5;
-    --muted: #6B7A99;
-    --accent: #2E7D52;
-    --accent2: #FF6B35;
-    --accent3: #7B61FF;
-    --danger: #FF4757;
-    --warning: #FFB800;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; min-height: 100vh; overflow-x: hidden; }
-  
-  /* Animated background grid */
-  body::before {
-    content: '';
-    position: fixed; inset: 0; z-index: 0;
-    background-image: 
-      linear-gradient(rgba(46,125,82,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(46,125,82,0.03) 1px, transparent 1px);
-    background-size: 60px 60px;
-    animation: gridMove 20s linear infinite;
-    pointer-events: none;
-  }
-  @keyframes gridMove { from { background-position: 0 0; } to { background-position: 60px 60px; } }
-
-  /* ---------- LAYOUT ---------- */
-  .app { display: block; min-height: 100vh; position: relative; z-index: 1; }
-
-  /* ---------- SIDEBAR ---------- */
-  .sidebar {
-    background: var(--surface);
-    border-right: 1px solid var(--border);
-    display: flex; flex-direction: column;
-    position: fixed; top: 0; left: 0; bottom: 0; width: 260px;
-    z-index: 100;
-  }
-  .sidebar-brand {
-    padding: 28px 24px 20px;
-    border-bottom: 1px solid var(--border);
-  }
-  .brand-icon { font-size: 32px; margin-bottom: 8px; display: block; }
-  .brand-name {
-    font-family: 'Space Mono', monospace;
-    font-size: 15px; font-weight: 700;
-    color: var(--accent);
-    letter-spacing: 1px;
-  }
-  .brand-sub { font-size: 11px; color: var(--muted); letter-spacing: 2px; font-family: 'Space Mono', monospace; }
-  
-  .sidebar-nav { flex: 1; padding: 16px 12px; overflow-y: auto; }
-  .nav-section-label { font-size: 10px; color: var(--muted); letter-spacing: 3px; padding: 16px 12px 8px; font-family: 'Space Mono', monospace; }
-  
-  .nav-link {
-    display: flex; align-items: center; gap: 12px;
-    padding: 11px 14px; border-radius: 10px;
-    color: var(--muted); font-size: 14px; font-weight: 600;
-    text-decoration: none; cursor: pointer;
-    transition: all 0.2s; margin-bottom: 2px;
-    border: 1px solid transparent;
-    position: relative;
-  }
-  .nav-link:hover { background: var(--surface2); color: var(--text); border-color: var(--border); }
-  .nav-link.active { background: rgba(46,125,82,0.1); color: var(--accent); border-color: rgba(46,125,82,0.2); }
-  .nav-link .icon { font-size: 18px; width: 22px; text-align: center; }
-  .nav-badge {
-    margin-left: auto; background: var(--danger); color: white;
-    font-size: 10px; font-family: 'Space Mono', monospace; font-weight: 700;
-    padding: 2px 7px; border-radius: 20px; min-width: 22px; text-align: center;
-  }
-  
-  .sidebar-footer {
-    padding: 16px; border-top: 1px solid var(--border);
-  }
-  .site-info { font-size: 11px; color: var(--muted); font-family: 'Space Mono', monospace; line-height: 1.6; }
-  .site-info strong { color: var(--accent); display: block; }
-
-  /* ---------- MAIN ---------- */
-  .main { margin-left: 260px; padding: 0; display: flex; flex-direction: column; min-height: 100vh; min-width: 0; overflow-x: hidden; }
-  
-  .topbar {
-    background: rgba(6,10,20,0.8); backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--border);
-    padding: 14px 28px;
-    display: flex; align-items: center; justify-content: space-between;
-    position: sticky; top: 0; z-index: 50; min-width: 0;
-  }
-  .page-title { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
-  .topbar-actions { display: flex; align-items: center; gap: 12px; }
-  
-  .btn {
-    font-family: 'Space Mono', monospace; font-size: 12px; font-weight: 700;
-    padding: 9px 18px; border-radius: 8px; border: none; cursor: pointer;
-    transition: all 0.2s; letter-spacing: 0.5px; text-decoration: none;
-    display: inline-flex; align-items: center; gap: 7px;
-  }
-  .btn-primary { background: var(--accent); color: white; }
-  .btn-primary:hover { background: #3a9e68; transform: translateY(-1px); box-shadow: 0 4px 20px rgba(46,125,82,0.4); }
-  .btn-secondary { background: transparent; color: var(--muted); border: 1px solid var(--border2); }
-  .btn-secondary:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
-  .btn-danger { background: var(--danger); color: white; }
-  .btn-danger:hover { background: #ff6070; }
-  .btn-sm { padding: 6px 12px; font-size: 11px; }
-
-  /* ---------- CONTENT ---------- */
-  .content { padding: 24px 28px; flex: 1; min-width: 0; overflow-x: hidden; }
-  .page { display: none; }
-  .page.active { display: block; animation: fadeIn 0.3s ease; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-
-  /* ---------- STATS GRID ---------- */
-  .stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 28px; }
-  .stat-card {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
-    padding: 20px; position: relative; overflow: hidden;
-    transition: transform 0.2s, border-color 0.2s; min-width: 0;
-  }
-  .stat-card:hover { transform: translateY(-2px); border-color: var(--border2); }
-  .stat-card::after {
-    content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
-  }
-  .stat-card.green::after { background: var(--accent); }
-  .stat-card.orange::after { background: var(--accent2); }
-  .stat-card.purple::after { background: var(--accent3); }
-  .stat-card.red::after { background: var(--danger); }
-  .stat-icon { font-size: 26px; margin-bottom: 10px; display: block; }
-  .stat-value { font-family: 'Space Mono', monospace; font-size: 32px; font-weight: 700; line-height: 1; margin-bottom: 6px; }
-  .stat-label { font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .stat-sub { font-size: 11px; color: var(--muted); margin-top: 6px; font-family: 'Space Mono', monospace; }
-
-  /* ---------- CARDS ---------- */
-  .card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 16px; overflow: hidden;
-  }
-  .card-header {
-    padding: 20px 24px; border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: space-between;
-  }
-  .card-title { font-size: 16px; font-weight: 700; }
-  .card-body { padding: 24px; }
-
-  /* ---------- PLANT GRID ---------- */
-  .plants-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
-  .plant-card {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
-    padding: 24px; position: relative; overflow: hidden;
-    transition: all 0.25s; cursor: pointer;
-  }
-  .plant-card:hover { border-color: var(--border2); transform: translateY(-3px); box-shadow: 0 12px 40px rgba(0,0,0,0.3); }
-  .plant-card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
-  .plant-emoji { font-size: 36px; margin-bottom: 8px; display: block; }
-  .plant-id { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--muted); letter-spacing: 2px; }
-  .plant-name { font-size: 17px; font-weight: 700; margin: 4px 0; }
-  .plant-location { font-size: 12px; color: var(--muted); }
-  .plant-status { display: flex; align-items: center; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); font-family: 'Space Mono', monospace; }
-  .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .plant-actions { display: flex; gap: 8px; margin-top: 14px; }
-
-  /* ---------- TABLE ---------- */
-  .table-wrap { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { 
-    font-family: 'Space Mono', monospace; font-size: 10px; color: var(--muted);
-    letter-spacing: 2px; padding: 12px 16px; text-align: left;
-    border-bottom: 1px solid var(--border); white-space: nowrap;
-  }
-  td { padding: 14px 16px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: rgba(255,255,255,0.02); }
-  .mono { font-family: 'Space Mono', monospace; font-size: 12px; color: var(--muted); }
-
-  /* ---------- FORMS ---------- */
-  .form-group { margin-bottom: 20px; }
-  .form-label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 8px; letter-spacing: 1px; font-family: 'Space Mono', monospace; }
-  .form-input {
-    width: 100%; background: var(--surface2); border: 1px solid var(--border2);
-    border-radius: 10px; padding: 12px 16px; color: var(--text);
-    font-family: 'Syne', sans-serif; font-size: 14px;
-    transition: border-color 0.2s;
-  }
-  .form-input:focus { outline: none; border-color: var(--accent); }
-  .form-select { appearance: none; cursor: pointer; }
-
-  /* ---------- COMPLIANCE GAUGE ---------- */
-  .compliance-row { display: flex; align-items: center; gap: 16px; margin-bottom: 10px; }
-  .compliance-bar-wrap { flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
-  .compliance-bar { height: 100%; border-radius: 4px; transition: width 1s ease; }
-
-  /* ---------- QR MODAL ---------- */
-  #qr-render { display: flex; justify-content: center; margin: 16px 0; }
-  #qr-render img { border-radius: 8px; }
-  #qr-render canvas { border-radius: 8px; }
-
-  /* ---------- NOTIFICATION DOT ---------- */
-  .notif-dot {
-    width: 8px; height: 8px; background: var(--danger); border-radius: 50%;
-    position: absolute; top: 8px; right: 10px;
-    animation: pulse 2s infinite;
-  }
-  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:0.6;transform:scale(1.2);} }
-
-  /* ---------- GRID LAYOUTS ---------- */
-  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; }
-
-  /* ---------- EMPTY STATE ---------- */
-  .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
-  .empty-state .icon { font-size: 48px; margin-bottom: 16px; display: block; }
-  .empty-state p { font-size: 14px; margin-top: 8px; }
-
-  /* ---------- SCROLLABLE LIST ---------- */
-  .scroll-list { max-height: 320px; overflow-y: auto; }
-  .list-item {
-    display: flex; align-items: center; gap: 14px; padding: 14px 0;
-    border-bottom: 1px solid var(--border);
-  }
-  .list-item:last-child { border-bottom: none; }
-
-  /* ---------- SEARCH ---------- */
-  .search-bar { position: relative; }
-  .search-bar input { padding-left: 36px; }
-  .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 14px; }
-
-  /* ---------- RESPONSIVE ---------- */
-  @media (max-width: 1200px) { .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  @media (max-width: 1024px) { .two-col { grid-template-columns: 1fr; } }
-  @media (max-width: 900px) {
-    .app { grid-template-columns: 1fr; }
-    .sidebar { display: none; }
-    .main { margin-left: 0; }
-    .two-col, .three-col { grid-template-columns: 1fr; }
-    .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .content { padding: 16px; }
-  }
-  @media (max-width: 500px) {
-    .stats-grid { grid-template-columns: 1fr 1fr; }
-    .stat-value { font-size: 28px; }
-  }
-
-  /* ---------- SWITCH TOGGLE ---------- */
-  .switch { position: relative; display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13px; color: var(--muted); }
-  .switch input { display: none; }
-  .switch-track { width: 40px; height: 22px; background: var(--border2); border-radius: 11px; position: relative; transition: background 0.2s; }
-  .switch input:checked + .switch-track { background: var(--accent); }
-  .switch-track::after { content: ''; position: absolute; width: 16px; height: 16px; background: white; border-radius: 50%; top: 3px; left: 3px; transition: transform 0.2s; }
-  .switch input:checked + .switch-track::after { transform: translateX(18px); }
-
-  /* ---------- CHART BAR ---------- */
-  .mini-chart { display: flex; align-items: flex-end; gap: 4px; height: 60px; margin-top: 8px; }
-  .mini-bar { flex: 1; background: var(--accent); border-radius: 3px 3px 0 0; opacity: 0.7; min-height: 4px; transition: opacity 0.2s; }
-  .mini-bar:hover { opacity: 1; }
-
-  /* ---------- FILTER TABS ---------- */
-  .filter-tabs { display: flex; gap: 4px; background: var(--surface2); padding: 4px; border-radius: 10px; border: 1px solid var(--border); }
-  .filter-tab { padding: 7px 16px; border-radius: 7px; font-size: 12px; font-weight: 700; cursor: pointer; color: var(--muted); border: none; background: none; font-family: 'Space Mono', monospace; transition: all 0.2s; }
-  .filter-tab.active { background: var(--surface); color: var(--text); border: 1px solid var(--border2); }
+*{box-sizing:border-box}html,body{height:100%}body{margin:0;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#0b0d14;color:#e7ecf3;display:flex;flex-direction:column}
+#topbar{display:flex;gap:8px;align-items:center;padding:8px 12px;background:#0f172a;border-bottom:1px solid #1f2a44;flex-wrap:wrap}
+h1{font-size:16px;margin:0 8px 0 0}
+.badge{background:#0f172a;border:1px solid #223047;border-radius:9px;padding:3px 7px}
+button{border:none;padding:6px 10px;border-radius:10px;background:#1e293b;color:#e7ecf3;cursor:pointer}
+button:hover{filter:brightness(1.1)}
+#craft{margin-left:auto;display:flex;gap:10px;align-items:center}
+#inv{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#inv .item{background:#111827;border:1px solid #334155;padding:3px 7px;border-radius:8px}
+#wrap{flex:1;display:flex;align-items:center;justify-content:center;background:#07090f}
+#game{display:block;width:960px;height:600px;max-width:100%;border:0;image-rendering:pixelated}
 </style>
 </head>
 <body>
-<div class="app">
-  <!-- SIDEBAR -->
-  <aside class="sidebar">
-    <div class="sidebar-brand">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px;">
-        <div style="width:40px;height:40px;border-radius:50%;background:#1B5E35;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 16px rgba(27,94,53,0.4);">
-          <span style="font-family:Georgia,serif;font-size:22px;font-weight:700;color:white;line-height:1;">Q</span>
-        </div>
-        <div>
-          <div class="brand-name">ROBERT QUINN LTD</div>
-          <div class="brand-sub">GA FORMS SYSTEM</div>
-        </div>
-      </div>
+  <div id="topbar">
+    <h1>Family Rescue: 99 Nights</h1>
+    <button id="btnHelp">Help</button>
+    <button id="btnRestart">Restart</button>
+    <button id="btnPause">Pause</button>
+    <span class="badge" id="bDay">Day 1</span>
+    <span class="badge" id="bTime">Dawn</span>
+    <span class="badge" id="bNights">Nights left: 99</span>
+    <span class="badge" id="bSigils">Runes: 0/3</span>
+    <span class="badge" id="bGoal">Goal: Rescue the child & build a house</span>
+    <div id="craft">
+      <span>Craft:</span>
+      <button data-craft="shovel">Shovel (wood3+stone2)</button>
+      <button data-craft="frame">House Frame (wood20+stone10)</button>
     </div>
-    <nav class="sidebar-nav">
-      <div class="nav-section-label">OVERVIEW</div>
-      <a class="nav-link active" data-page="dashboard" onclick="showPage('dashboard')">
-        <span class="icon">📊</span> Dashboard
-      </a>
-      <a class="nav-link" data-page="compliance" onclick="showPage('compliance')">
-        <span class="icon">✅</span> Compliance
-        <span class="nav-badge" id="issues-badge" style="display:none">0</span>
-      </a>
-      <a class="nav-link" data-page="defects" onclick="showPage('defects')">
-        <span class="icon">🔧</span> Defect Tracker
-        <span class="nav-badge" id="defects-badge" style="display:none">0</span>
-      </a>
-      <div class="nav-section-label">PLANT</div>
-      <a class="nav-link" data-page="plants" onclick="showPage('plants')">
-        <span class="icon">🏗️</span> Plant Register
-      </a>
-
-      <a class="nav-link" href="lifting.html" style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:10px;color:var(--muted);font-size:14px;font-weight:600;text-decoration:none;transition:all 0.2s;margin-bottom:2px;border:1px solid transparent;" onmouseover="this.style.background='var(--surface2)';this.style.color='var(--text)'" onmouseout="this.style.background='';this.style.color='var(--muted)'">
-        <span style="font-size:18px;width:22px;text-align:center;">🪝</span> Lifting Register
-      </a>
-      <a class="nav-link" data-page="qr-codes" onclick="showPage('qr-codes')">
-        <span class="icon">📱</span> QR Codes
-      </a>
-      <div class="nav-section-label">FORMS</div>
-      <a class="nav-link" data-page="submissions" onclick="showPage('submissions')">
-        <span class="icon">📋</span> Submissions
-      </a>
-      <a class="nav-link" data-page="form-templates" onclick="showPage('form-templates')">
-        <span class="icon">📝</span> Form Templates
-      </a>
-      <div class="nav-section-label">SYSTEM</div>
-      <a class="nav-link" data-page="notifications" onclick="showPage('notifications')" style="position:relative;">
-        <span class="icon">🔔</span> Notifications
-        <span class="nav-badge" id="notif-badge" style="display:none">0</span>
-      </a>
-      <a class="nav-link" id="nav-admin-panel" data-page="admin-panel" onclick="showPage('admin-panel')" style="display:none;">
-        <span class="icon">⚙️</span> Admin Panel
-      </a>
-      <a class="nav-link" data-page="settings" onclick="showPage('settings')">
-        <span class="icon">⚙️</span> Settings
-      </a>
-    </nav>
-    <div class="sidebar-footer">
-      <div class="site-info">
-        <strong id="site-name-display">Loading...</strong>
-        <span id="company-display">Loading...</span>
-      </div>
-    </div>
-  </aside>
-
-  <!-- MAIN CONTENT -->
-  <main class="main">
-    <div class="topbar">
-      <div class="page-title" id="page-title">Dashboard</div>
-      <div class="topbar-actions">
-        <span id="current-date" class="mono" style="font-size:12px;"></span>
-        <div id="role-badge" style="display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border2);padding:6px 14px;border-radius:20px;font-size:12px;font-family:'Space Mono',monospace;"></div>
-        <button class="btn btn-primary" onclick="window.open('form.html','_blank')">+ New Form</button>
-        <button class="btn btn-secondary" onclick="logout()" title="Logout">⏻</button>
-      </div>
-    </div>
-
-    <div class="content">
-
-      <!-- ===== DASHBOARD PAGE ===== -->
-      <div class="page active" id="page-dashboard">
-        <div class="stats-grid">
-          <div class="stat-card green">
-            <span class="stat-icon">🏗️</span>
-            <div class="stat-value" id="stat-plants">0</div>
-            <div class="stat-label">Total Plants</div>
-            <div class="stat-sub">On register</div>
-          </div>
-          <div class="stat-card orange">
-            <span class="stat-icon">📋</span>
-            <div class="stat-value" id="stat-weekly">0</div>
-            <div class="stat-label">Forms This Week</div>
-            <div class="stat-sub">Last 7 days</div>
-          </div>
-          <div class="stat-card purple">
-            <span class="stat-icon">✅</span>
-            <div class="stat-value" id="stat-compliant">0</div>
-            <div class="stat-label">Compliant Plants</div>
-            <div class="stat-sub">Inspected today</div>
-          </div>
-          <div class="stat-card red">
-            <span class="stat-icon">⚠️</span>
-            <div class="stat-value" id="stat-issues">0</div>
-            <div class="stat-label">Open Issues</div>
-            <div class="stat-sub">Need attention</div>
-          </div>
-        </div>
-
-        <div class="two-col" style="margin-bottom:24px;">
-          <div class="card">
-            <div class="card-header">
-              <span class="card-title">Recent Submissions</span>
-              <button class="btn btn-secondary btn-sm" onclick="showPage('submissions')">View All</button>
-            </div>
-            <div id="recent-submissions-list" class="scroll-list" style="padding:0 24px;">
-              <div class="empty-state"><span class="icon">📭</span><strong>No submissions yet</strong><p>Forms submitted from the field will appear here</p></div>
-            </div>
-          </div>
-          <div class="card">
-            <div class="card-header">
-              <span class="card-title">Plant Status Overview</span>
-            </div>
-            <div class="card-body" id="plant-status-overview"></div>
-          </div>
-        </div>
-
-        <div class="two-col">
-          <div class="card">
-            <div class="card-header"><span class="card-title">⚠️ Compliance Alerts</span></div>
-            <div id="compliance-alerts" class="scroll-list" style="padding:0 24px;">
-              <div class="empty-state"><span class="icon">🎉</span><strong>All clear!</strong><p>No compliance issues detected</p></div>
-            </div>
-          </div>
-          <div class="card">
-            <div class="card-header"><span class="card-title">📅 Submissions This Week</span></div>
-            <div class="card-body">
-              <div class="mini-chart" id="week-chart"></div>
-              <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:10px;color:var(--muted);font-family:'Space Mono',monospace;" id="week-labels"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ===== PLANTS PAGE ===== -->
-      <div class="page" id="page-plants">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
-          <div>
-            <div style="font-size:13px;color:var(--muted);margin-top:4px;" id="plant-count-label"></div>
-          </div>
-          <div style="display:flex;gap:10px;">
-            <div class="search-bar">
-              <span class="search-icon">🔍</span>
-              <input type="text" class="form-input" id="plant-search" placeholder="Search plants..." oninput="filterPlants()" style="width:220px;">
-            </div>
-            <button class="btn btn-primary" onclick="openAddPlantModal()">+ Add Plant</button>
-          </div>
-        </div>
-        <div class="plants-grid" id="plants-grid"></div>
-      </div>
-
-      <!-- ===== QR CODES PAGE ===== -->
-      <div class="page" id="page-qr-codes">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
-          <div style="font-size:13px;color:var(--muted);">Click any QR code to view, download or print the label</div>
-          <button class="btn btn-secondary" onclick="printAllLabels()">🖨️ Print All Labels</button>
-        </div>
-        <div id="qr-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:20px;"></div>
-      </div>
-
-      <!-- ===== SUBMISSIONS PAGE ===== -->
-      <div class="page" id="page-submissions">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
-          <div style="display:flex;gap:10px;align-items:center;">
-            <div class="filter-tabs" id="form-filter-tabs">
-              <button class="filter-tab active" data-filter="ALL" onclick="filterSubmissions('ALL')">ALL</button>
-              <button class="filter-tab" data-filter="GA2" onclick="filterSubmissions('GA2')">GA2</button>
-              <button class="filter-tab" data-filter="GA3" onclick="filterSubmissions('GA3')">GA3</button>
-              <button class="filter-tab" data-filter="GA4" onclick="filterSubmissions('GA4')">GA4</button>
-              <button class="filter-tab" data-filter="GL1" onclick="filterSubmissions('GL1')">GL1</button>
-            </div>
-          </div>
-          <div class="search-bar">
-            <span class="search-icon">🔍</span>
-            <input type="text" class="form-input" id="sub-search" placeholder="Search by name, plant..." oninput="filterSubmissionsText()" style="width:260px;">
-          </div>
-        </div>
-        <div class="card">
-          <div class="table-wrap">
-            <table id="submissions-table">
-              <thead>
-                <tr>
-                  <th>FORM</th>
-                  <th>PLANT</th>
-                  <th>OPERATOR</th>
-                  <th>COMPANY</th>
-                  <th>SUBMITTED</th>
-                  <th>SCORE</th>
-                  <th>STATUS</th>
-                  <th>ACTIONS</th>
-                </tr>
-              </thead>
-              <tbody id="submissions-tbody"></tbody>
-            </table>
-          </div>
-          <div id="submissions-empty" class="empty-state" style="display:none;">
-            <span class="icon">📭</span><strong>No submissions found</strong><p>Submitted forms will appear here</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- ===== FORM TEMPLATES PAGE ===== -->
-      <div class="page" id="page-form-templates">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
-          <div style="font-size:13px;color:var(--muted);">Manage form checklists. Upload your own Word/Excel/PDF checklist and convert it to site format.</div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;">
-            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('import-file').click()">📂 Import Checklist</button>
-            <input type="file" id="import-file" accept=".txt,.csv,.json,.docx,.pdf" style="display:none" onchange="importChecklist(this)">
-            <button class="btn btn-primary btn-sm" onclick="openCreateTemplate()">+ New Template</button>
-          </div>
-        </div>
-        <div id="import-preview" style="display:none;"></div>
-        <div id="templates-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:24px;"></div>
-      </div>
-
-      <!-- ===== COMPLIANCE PAGE ===== -->
-      <div class="page" id="page-compliance">
-        <div class="card" style="margin-bottom:24px;">
-          <div class="card-header"><span class="card-title">📊 Overall Compliance Rate</span></div>
-          <div class="card-body" id="compliance-overview"></div>
-        </div>
-        <div class="card">
-          <div class="card-header"><span class="card-title">⚠️ Issues Log</span></div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>PLANT</th><th>ISSUE</th><th>SEVERITY</th><th>ACTION</th></tr></thead>
-              <tbody id="compliance-table"></tbody>
-            </table>
-          </div>
-          <div id="compliance-empty" class="empty-state" style="display:none;">
-            <span class="icon">🎉</span><strong>100% Compliant!</strong><p>All plants have completed their required inspections</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- ===== NOTIFICATIONS PAGE ===== -->
-      <div class="page" id="page-notifications">
-        <div style="display:flex;justify-content:space-between;margin-bottom:24px;">
-          <div style="font-size:13px;color:var(--muted);">System alerts and compliance notifications</div>
-          <button class="btn btn-secondary btn-sm" onclick="markAllRead()">Mark all read</button>
-        </div>
-        <div class="card">
-          <div id="notif-list" style="padding:0 24px;"></div>
-        </div>
-      </div>
-
-      <!-- ===== SETTINGS PAGE ===== -->
-      <div class="page" id="page-settings">
-        <div class="two-col">
-          <div class="card">
-            <div class="card-header"><span class="card-title">🏢 Site Configuration</span></div>
-            <div class="card-body">
-              <div class="form-group">
-                <label class="form-label">COMPANY NAME</label>
-                <input type="text" class="form-input" id="set-company" placeholder="Your company name">
-              </div>
-              <div class="form-group">
-                <label class="form-label">SITE NAME</label>
-                <input type="text" class="form-input" id="set-site" placeholder="Site name">
-              </div>
-              <div class="form-group">
-                <label class="form-label">SITE MANAGER</label>
-                <input type="text" class="form-input" id="set-manager" placeholder="Manager name">
-              </div>
-              <div class="form-group">
-                <label class="form-label">SAFETY OFFICER</label>
-                <input type="text" class="form-input" id="set-safety" placeholder="Safety officer name">
-              </div>
-              <div class="form-group">
-                <label class="form-label">NOTIFICATION EMAIL</label>
-                <input type="email" class="form-input" id="set-email" placeholder="safety@company.com">
-              </div>
-              <button class="btn btn-primary" onclick="saveSettings()">💾 Save Settings</button>
-            </div>
-          </div>
-          <div>
-            <div class="card" style="margin-bottom:20px;">
-              <div class="card-header"><span class="card-title">🔄 Inspection Requirements</span></div>
-              <div class="card-body">
-                <div class="form-group">
-                  <label class="form-label">REQUIRED DAILY FORM</label>
-                  <select class="form-input form-select" id="set-daily">
-                    <option value="GA2">GA2 - Pre-Start Inspection</option>
-                    <option value="GA3">GA3 - Hazard Assessment</option>
-                    <option value="GA4">GA4 - Maintenance Check</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label class="form-label">REQUIRED WEEKLY FORM</label>
-                  <select class="form-input form-select" id="set-weekly">
-                    <option value="GA3">GA3 - Hazard Assessment</option>
-                    <option value="GA2">GA2 - Pre-Start Inspection</option>
-                    <option value="GA4">GA4 - Maintenance Check</option>
-                  </select>
-                </div>
-                <button class="btn btn-primary" onclick="saveSettings()">💾 Save</button>
-              </div>
-            </div>
-            <div class="card">
-              <div class="card-header"><span class="card-title">🗑️ Data Management</span></div>
-              <div class="card-body">
-                <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">Export or reset system data. Use with caution.</p>
-                <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                  <button class="btn btn-secondary btn-sm" onclick="exportData()">📤 Export JSON</button>
-                  <button class="btn btn-secondary btn-sm" onclick="importDataPrompt()">📥 Import JSON</button>
-                  <button class="btn btn-danger btn-sm" onclick="hardResetData()">🔄 Reset & Reseed All Data</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ===== DEFECT TRACKER PAGE ===== -->
-      <div class="page" id="page-defects">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
-          <div>
-            <div style="font-size:22px;font-weight:800;">🔧 Defect Tracker</div>
-            <div style="font-size:13px;color:var(--muted);margin-top:2px;">All FAIL items reported across plant inspections</div>
-          </div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;">
-            <button class="btn btn-secondary btn-sm" onclick="filterDefects('all')"     id="df-all">All</button>
-            <button class="btn btn-secondary btn-sm" onclick="filterDefects('open')"    id="df-open">🔴 Open</button>
-            <button class="btn btn-secondary btn-sm" onclick="filterDefects('resolved')" id="df-res">✅ Resolved</button>
-            <button class="btn btn-secondary btn-sm" onclick="printDefectReport()">🖨️ Print</button>
-            <button class="btn btn-secondary btn-sm" onclick="printWeeklySummary()">📊 Weekly Report</button>
-          </div>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;">
-          <div class="card" style="padding:18px;border-bottom:3px solid var(--danger);">
-            <div style="font-size:22px;margin-bottom:8px;">🚨</div>
-            <div style="font-family:'Space Mono',monospace;font-size:28px;font-weight:700;" id="def-stat-open">0</div>
-            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:4px;">OPEN DEFECTS</div>
-          </div>
-          <div class="card" style="padding:18px;border-bottom:3px solid var(--accent);">
-            <div style="font-size:22px;margin-bottom:8px;">✅</div>
-            <div style="font-family:'Space Mono',monospace;font-size:28px;font-weight:700;" id="def-stat-res">0</div>
-            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:4px;">RESOLVED</div>
-          </div>
-          <div class="card" style="padding:18px;border-bottom:3px solid var(--warning);">
-            <div style="font-size:22px;margin-bottom:8px;">🏗️</div>
-            <div style="font-family:'Space Mono',monospace;font-size:28px;font-weight:700;" id="def-stat-plants">0</div>
-            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:4px;">PLANTS AFFECTED</div>
-          </div>
-          <div class="card" style="padding:18px;border-bottom:3px solid var(--accent3);">
-            <div style="font-size:22px;margin-bottom:8px;">📅</div>
-            <div style="font-family:'Space Mono',monospace;font-size:28px;font-weight:700;" id="def-stat-week">0</div>
-            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:4px;">THIS WEEK</div>
-          </div>
-        </div>
-        <div id="defect-list"></div>
-      </div>
-
-      <!-- ===== ADMIN PANEL ===== -->
-      <div class="page" id="page-admin-panel">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;" id="admin-grid">
-          <!-- Sites column -->
-          <div>
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-              <div style="font-size:16px;font-weight:800;">🏗️ Sites</div>
-              <button class="btn btn-primary btn-sm" onclick="openAddSite()">+ Add Site</button>
-            </div>
-            <div id="admin-sites"></div>
-          </div>
-          <!-- Users column -->
-          <div>
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-              <div style="font-size:16px;font-weight:800;">👥 Users</div>
-              <div style="display:flex;gap:8px;">
-                <select class="form-input form-select" id="user-site-filter" onchange="renderAdminUsers()" style="font-size:12px;padding:6px 10px;width:auto;">
-                  <option value="all">All Sites</option>
-                </select>
-                <button class="btn btn-primary btn-sm" onclick="openAddUser()">+ Add User</button>
-              </div>
-            </div>
-            <div id="admin-users"></div>
-          </div>
-        </div>
-      </div>
-
-    </div><!-- /content -->
-  </main>
-</div>
+  </div>
+  <div id="wrap"><canvas id="game" width="960" height="600"></canvas></div>
 
 <script>
-// ============================================================
-// AUTH GUARD & SESSION
-// ============================================================
-function checkAuth() {
-  if (!AUTH.isLoggedIn()) {
-    window.location.href = 'login.html?return=' + encodeURIComponent(window.location.href);
-    return false;
-  }
-  return true;
-}
-
-function logout() {
-  AUTH.clearSession();
-  window.location.href = 'login.html';
-}
-
-function initRoleBadge() {
-  const session = AUTH.getSession();
-  const role = AUTH.getRoleInfo();
-  if (!session || !role) return;
-  const site = AUTH.getSite(session.siteId);
-  document.getElementById('role-badge').innerHTML =
-    `<span style="color:${role.color};">${role.icon}</span>
-     <div style="display:flex;flex-direction:column;gap:1px;">
-       <span style="color:var(--text);font-size:12px;">${session.name}</span>
-       ${site ? `<span style="color:var(--muted);font-size:10px;">📍 ${site.name}</span>` : ''}
-     </div>
-     <span style="color:${role.color};font-size:10px;letter-spacing:1px;">${role.label.toUpperCase()}</span>`;
-
-  // Show admin panel for admin and project_manager
-  if (['admin','project_manager'].includes(session.role)) {
-    const adminNav = document.getElementById('nav-admin-panel'); if(adminNav) adminNav.style.display = '';
-  }
-  // Show defects nav for non-operators
-  if (session.role !== 'operator') {
-    const defNav = document.querySelector('[data-page="defects"]');
-    if (defNav) defNav.style.display = '';
-  }
-
-  // Hide nav items based on role permissions
-  const navMap = {
-    'plants': 'plants',
-    'qr-codes': 'qr-codes',
-    'submissions': 'submissions',
-    'form-templates': 'form-templates',
-    'compliance': 'compliance',
-    'settings': 'settings',
-  };
-  Object.entries(navMap).forEach(([page, navPage]) => {
-    const link = document.querySelector(`[data-page="${page}"]`);
-    if (link && !AUTH.can(page)) link.style.display = 'none';
-  });
-}
-
-// ============================================================
-// NAVIGATION
-// ============================================================
-const pageTitles = {
-  dashboard: '📊 Dashboard',
-  plants: '🏗️ Plant Register',
-  'qr-codes': '📱 QR Codes',
-  submissions: '📋 Submissions',
-  'form-templates': '📝 Form Templates',
-  compliance: '✅ Compliance',
-  notifications: '🔔 Notifications',
-  'admin-panel': '⚙️ Admin Panel',
-  settings: '⚙️ Settings',
-};
-
-function showPage(page) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-link').forEach(a => a.classList.remove('active'));
-  document.getElementById('page-' + page).classList.add('active');
-  document.querySelector(`[data-page="${page}"]`).classList.add('active');
-  document.getElementById('page-title').textContent = pageTitles[page] || page;
-  const renders = { dashboard: renderDashboard, plants: renderPlants, 'qr-codes': renderQRCodes, submissions: renderSubmissions, 'form-templates': renderTemplates, compliance: renderCompliance, defects: renderDefects, notifications: renderNotifications, settings: renderSettings, 'admin-panel': renderAdminPanel };
-  if (renders[page]) renders[page]();
-}
-
-// ============================================================
-// DASHBOARD
-// ============================================================
-function renderDashboard() {
-  const plants = DB.getPlants();
-  const weekSubs = DB.getSubmissionsThisWeek();
-  const allSubs = DB.getSubmissions();
-  const today = new Date().toDateString();
-  const compliantToday = plants.filter(p => p.lastInspected && new Date(p.lastInspected).toDateString() === today).length;
-  const issues = DB.checkCompliance();
-
-  // Animate stats
-  ['stat-plants', 'stat-weekly', 'stat-compliant', 'stat-issues'].forEach((id, i) => {
-    const vals = [plants.length, weekSubs.length, compliantToday, issues.length];
-    UI.animateCounter(document.getElementById(id), vals[i]);
-  });
-
-  // Badge
-  const b = document.getElementById('issues-badge');
-  if (issues.length > 0) { b.style.display = ''; b.textContent = issues.length; } else { b.style.display = 'none'; }
-
-  // Recent submissions
-  const rsList = document.getElementById('recent-submissions-list');
-  if (allSubs.length === 0) {
-    rsList.innerHTML = `<div class="empty-state"><span class="icon">📭</span><strong>No submissions yet</strong><p>Forms submitted from the field will appear here</p></div>`;
-  } else {
-    rsList.innerHTML = allSubs.slice(0, 8).map(s => {
-      const plant = DB.getPlant(s.plantId);
-      const score = Math.round((s.passed / s.total) * 100);
-      const color = score === 100 ? '#00C896' : score >= 90 ? '#FF6B35' : '#FF4757';
-      return `<div class="list-item">
-        <span style="font-size:24px;">${plant?.photo || '🏗️'}</span>
-        <div style="flex:1;min-width:0;">
-          <div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s.formId} — ${plant?.name || s.plantId}</div>
-          <div class="mono" style="font-size:11px;">${s.operatorName} · ${UI.timeAgo(s.submittedAt)}</div>
-        </div>
-        <div style="font-family:'Space Mono',monospace;font-size:14px;font-weight:700;color:${color};">${score}%</div>
-      </div>`;
-    }).join('');
-  }
-
-  // Plant status overview
-  const overview = document.getElementById('plant-status-overview');
-  overview.innerHTML = plants.slice(0, 6).map(p => {
-    const color = UI.complianceColor(p);
-    const label = UI.complianceLabel(p);
-    return `<div class="compliance-row">
-      <span style="width:26px;font-size:16px;">${p.photo}</span>
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.name}</div>
-        <div class="compliance-bar-wrap">
-          <div class="compliance-bar" style="width:${label==='COMPLIANT'?100:label==='NEEDS ATTENTION'?50:15}%;background:${color};"></div>
-        </div>
-      </div>
-      <span style="font-family:'Space Mono',monospace;font-size:10px;color:${color};white-space:nowrap;">${label}</span>
-    </div>`;
-  }).join('');
-
-  // Compliance alerts
-  const alerts = document.getElementById('compliance-alerts');
-  if (issues.length === 0) {
-    alerts.innerHTML = `<div class="empty-state"><span class="icon">🎉</span><strong>All clear!</strong><p>No compliance issues detected</p></div>`;
-  } else {
-    alerts.innerHTML = issues.slice(0, 6).map(i => `
-      <div class="list-item">
-        <span style="color:${i.severity==='warning'?'#FFB800':'#6B7A99'};font-size:18px;">${i.severity==='warning'?'⚠️':'ℹ️'}</span>
-        <div style="flex:1;">
-          <div style="font-size:13px;font-weight:700;">${i.plantName}</div>
-          <div class="mono" style="font-size:11px;color:var(--muted);">${i.issue}</div>
-        </div>
-      </div>`).join('');
-  }
-
-  // Week chart
-  const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  const today2 = new Date();
-  const weekData = days.map((d, i) => {
-    const date = new Date(today2);
-    date.setDate(today2.getDate() - (6 - i));
-    const ds = date.toDateString();
-    return allSubs.filter(s => new Date(s.submittedAt).toDateString() === ds).length;
-  });
-  const maxVal = Math.max(...weekData, 1);
-  document.getElementById('week-chart').innerHTML = weekData.map((v, i) => `
-    <div class="mini-bar" title="${days[i]}: ${v} submissions" style="height:${(v/maxVal)*100}%;background:${i===6?'var(--accent)':'rgba(46,125,82,0.4)'};">
-    </div>`).join('');
-  document.getElementById('week-labels').innerHTML = days.map(d => `<span>${d}</span>`).join('');
-}
-
-// ============================================================
-// PLANTS
-// ============================================================
-let allPlants = [];
-function renderPlants() {
-  allPlants = DB.getPlants();
-  document.getElementById('plant-count-label').textContent = `${allPlants.length} plant${allPlants.length !== 1 ? 's' : ''} on register`;
-  renderPlantCards(allPlants);
-}
-
-function renderPlantCards(plants) {
-  const grid = document.getElementById('plants-grid');
-  if (plants.length === 0) {
-    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><span class="icon">🏗️</span><strong>No plants found</strong><p>Add your first plant to get started</p></div>`;
-    return;
-  }
-  grid.innerHTML = plants.map(p => {
-    const color = UI.complianceColor(p);
-    const label = UI.complianceLabel(p);
-    const subs = DB.getSubmissionsForPlant(p.id);
-    return `<div class="plant-card" onclick="viewPlant('${p.id}')">
-      <div class="plant-card-header">
-        <div>
-          <span class="plant-emoji">${p.photo || '🏗️'}</span>
-          <div class="plant-id">${p.id}</div>
-          <div class="plant-name">${p.name}</div>
-          <div class="plant-location">📍 ${p.location}</div>
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-          ${UI.badge(p.type || 'General Plant', '#7B61FF')}
-          ${p.formType ? `<span style="font-size:9px;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:1px;">${p.formType}</span>` : ''}
-          <div style="width:10px;height:10px;border-radius:50%;background:${color};box-shadow:0 0 8px ${color};margin-top:2px;"></div>
-        </div>
-      </div>
-      ${p.outOfService ? `<div style="background:rgba(255,71,87,0.1);border:1px solid rgba(255,71,87,0.3);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:var(--danger);font-weight:700;">🚫 OUT OF SERVICE — ${p.oosReason||'Reason not specified'}</div>` : ''}
-      <div class="plant-status">
-        <div class="status-dot" style="background:${color};box-shadow:0 0 6px ${color};"></div>
-        <span style="color:${color};font-weight:700;">${label}</span>
-        <span style="margin-left:auto;">Last: ${UI.timeAgo(p.lastInspected)}</span>
-      </div>
-      <div style="font-size:11px;color:var(--muted);margin-top:6px;font-family:'Space Mono',monospace;">${subs.length} submission${subs.length !== 1 ? 's' : ''} · ${DB.getDefectsForPlant(p.id).filter(d=>d.status==='open').length} open defect(s)</div>
-      <div class="plant-actions" onclick="event.stopPropagation()">
-        ${p.outOfService
-          ? `<button class="btn btn-primary btn-sm" onclick="returnToService('${p.id}')">✅ Return to Service</button>`
-          : `<a href="form.html?plant=${p.id}" target="_blank" class="btn btn-primary btn-sm">📋 Fill Form</a>`
-        }
-        <button class="btn btn-secondary btn-sm" onclick="showQR('${p.id}')">📱 QR</button>
-        <button class="btn btn-secondary btn-sm" onclick="editPlant('${p.id}')">✏️</button>
-        <button class="btn btn-secondary btn-sm" onclick="toggleOOS('${p.id}')">${p.outOfService ? '🔧' : '🚫'}</button>
-        <button class="btn btn-danger btn-sm" onclick="deletePlant('${p.id}')">🗑️</button>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function filterPlants() {
-  const q = document.getElementById('plant-search').value.toLowerCase();
-  renderPlantCards(allPlants.filter(p =>
-    p.name.toLowerCase().includes(q) ||
-    p.id.toLowerCase().includes(q) ||
-    p.location.toLowerCase().includes(q) ||
-    p.type.toLowerCase().includes(q)
-  ));
-}
-
-function viewPlant(id) {
-  const plant = DB.getPlant(id);
-  const subs = DB.getSubmissionsForPlant(id);
-  const color = UI.complianceColor(plant);
-  const histHTML = subs.length === 0 ? '<p style="color:var(--muted);">No submissions for this plant yet.</p>' :
-    subs.slice(0, 10).map(s => {
-      const score = Math.round((s.passed / s.total) * 100);
-      const c = score === 100 ? '#00C896' : score >= 90 ? '#FF6B35' : '#FF4757';
-      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
-        <div><div style="font-size:13px;font-weight:700;">${s.formId}</div><div style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;">${s.operatorName} · ${UI.formatDate(s.submittedAt)}</div></div>
-        <div style="color:${c};font-family:'Space Mono',monospace;font-weight:700;">${score}%</div>
-      </div>`;
-    }).join('');
-  UI.modal(
-    `${plant.photo} ${plant.name}`,
-    `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
-      <div style="background:var(--surface2);border-radius:10px;padding:14px;">
-        <div style="font-size:10px;color:var(--muted);letter-spacing:2px;font-family:'Space Mono',monospace;">PLANT ID</div>
-        <div style="font-size:16px;font-weight:700;margin-top:4px;">${plant.id}</div>
-      </div>
-      <div style="background:var(--surface2);border-radius:10px;padding:14px;">
-        <div style="font-size:10px;color:var(--muted);letter-spacing:2px;font-family:'Space Mono',monospace;">STATUS</div>
-        <div style="font-size:16px;font-weight:700;color:${color};margin-top:4px;">${UI.complianceLabel(plant)}</div>
-      </div>
-      <div style="background:var(--surface2);border-radius:10px;padding:14px;">
-        <div style="font-size:10px;color:var(--muted);letter-spacing:2px;font-family:'Space Mono',monospace;">LOCATION</div>
-        <div style="font-size:14px;margin-top:4px;">${plant.location}</div>
-      </div>
-      <div style="background:var(--surface2);border-radius:10px;padding:14px;">
-        <div style="font-size:10px;color:var(--muted);letter-spacing:2px;font-family:'Space Mono',monospace;">TYPE</div>
-        <div style="font-size:14px;margin-top:4px;">${plant.type}</div>
-      </div>
-    </div>
-    <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--text);">📋 Inspection History</div>
-    ${histHTML}`,
-    `<a href="form.html?plant=${plant.id}" target="_blank" class="btn btn-primary">+ Fill Form</a>`
-  );
-}
-
-// Plant type → formType + icon mapping
-const PLANT_TYPES = [
-  { label:'Scissor Lift / MEWP',   formType:'GA2-MEWP',  icon:'🔼', hint:'Scissor lifts, boom lifts, cherry pickers' },
-  { label:'Excavator',             formType:'GA2-EXC',   icon:'🔵', hint:'Tracked and wheeled excavators' },
-  { label:'Dumper',                formType:'GA2-DMP',   icon:'🚛', hint:'Forward tip and swivel skip dumpers' },
-  { label:'Mobile Crane',          formType:'GA2-CRANE', icon:'🏗️', hint:'Truck, all-terrain or crawler cranes' },
-  { label:'Telehandler',           formType:'GA2-TELEH', icon:'🚜', hint:'Telescopic handlers' },
-  { label:'Generator',             formType:'GA2-GEN',   icon:'⚡', hint:'Diesel generators and power packs' },
-  { label:'Compressor',            formType:'GA2-COMP',  icon:'💨', hint:'Air compressors and hydraulic power packs' },
-  { label:'Formwork / Falsework',  formType:'GA2-FWORK', icon:'🧱', hint:'Formwork and falsework structures' },
-  { label:'Other / General Plant', formType:null,        icon:'⚙️', hint:'GA3 hazard assessment and GA4 maintenance only' },
-];
-
-function openAddPlantModal(existing = null) {
-  const plant = existing || { id:'', name:'', location:'', formType:null, photo:'⚙️' };
-  const currentType = PLANT_TYPES.find(t => t.formType === plant.formType) || PLANT_TYPES[PLANT_TYPES.length-1];
-
-  UI.modal(
-    existing ? '✏️ Edit Plant' : '➕ Add New Plant',
-    `<div class="form-group">
-      <label class="form-label">PLANT NAME *</label>
-      <input type="text" class="form-input" id="mp-name" value="${plant.name}" placeholder="e.g. Scissor Lift SL-02">
-    </div>
-    <div class="form-group">
-      <label class="form-label">LOCATION ON SITE *</label>
-      <input type="text" class="form-input" id="mp-location" value="${plant.location}" placeholder="e.g. North Yard, Level 2">
-    </div>
-    <div class="form-group">
-      <label class="form-label">PLANT TYPE *</label>
-      <select class="form-input form-select" id="mp-formtype" onchange="updatePlantIcon()">
-        ${PLANT_TYPES.map(t => `<option value="${t.formType||''}" data-icon="${t.icon}" ${t.formType===plant.formType?'selected':''}>${t.icon} ${t.label}</option>`).join('')}
-      </select>
-      <div id="mp-type-hint" style="font-size:11px;color:var(--muted);margin-top:5px;font-family:'Space Mono',monospace;">${currentType.hint}</div>
-    </div>`,
-    `<button onclick="UI.closeModal()" style="${UI.btnStyle('secondary')}">Cancel</button>
-     <button onclick="savePlant('${plant.id}')" style="${UI.btnStyle('primary')}">${existing ? 'Save Changes' : 'Add Plant'}</button>`
-  );
-}
-
-function updatePlantIcon() {
-  const sel  = document.getElementById('mp-formtype');
-  const opt  = sel.options[sel.selectedIndex];
-  const type = PLANT_TYPES.find(t => (t.formType||'') === sel.value);
-  if (type) document.getElementById('mp-type-hint').textContent = type.hint;
-}
-
-function savePlant(existingId) {
-  const name     = document.getElementById('mp-name').value.trim();
-  const location = document.getElementById('mp-location').value.trim();
-  const sel      = document.getElementById('mp-formtype');
-  const formTypeVal = sel.value || null;
-  const plantTypeObj = PLANT_TYPES.find(t => (t.formType||'') === (formTypeVal||'')) || PLANT_TYPES[PLANT_TYPES.length-1];
-  const photo    = plantTypeObj.icon;
-  const type     = plantTypeObj.label;
-
-  if (!name || !location) { UI.toast('Name and location are required', 'error'); return; }
-
-  if (existingId) {
-    DB.updatePlant(existingId, { name, location, type, formType: formTypeVal, photo });
-    UI.toast('Plant updated', 'success');
-  } else {
-    DB.addPlant({ name, location, type, formType: formTypeVal, photo });
-    DB.addNotification({ title:'Plant Added', message:`${name} added to register`, type:'info' });
-    UI.toast('Plant added to register', 'success');
-  }
-  UI.closeModal();
-  renderPlants();
-}
-
-function editPlant(id) {
-  openAddPlantModal(DB.getPlant(id));
-}
-
-function deletePlant(id) {
-  const p = DB.getPlant(id);
-  UI.confirm(`Delete <strong>${p.name}</strong>? This will also remove all associated submissions.`, () => {
-    DB.deletePlant(id);
-    UI.toast('Plant deleted', 'warning');
-    renderPlants();
-  });
-}
-
-// ============================================================
-// QR CODES
-// ============================================================
-function renderQRCodes() {
-  const plants = DB.getPlants();
-  const grid = document.getElementById('qr-grid');
-  grid.innerHTML = plants.map(p => `
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;text-align:center;cursor:pointer;transition:all 0.2s;"
-         onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'"
-         onclick="showQR('${p.id}')">
-      <div id="qr-mini-${p.id}" style="display:flex;justify-content:center;margin-bottom:12px;"></div>
-      <div style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;">${p.id}</div>
-      <div style="font-size:14px;font-weight:700;margin:4px 0;">${p.photo} ${p.name}</div>
-      <div style="font-size:11px;color:var(--muted);">📍 ${p.location}</div>
-      <button onclick="event.stopPropagation();QRGen.printLabel(DB.getPlant('${p.id}'))" class="btn btn-secondary btn-sm" style="margin-top:12px;width:100%;">🖨️ Print Label</button>
-    </div>`).join('');
-
-  // Render QR codes
-  setTimeout(() => {
-    plants.forEach(p => {
-      const el = document.getElementById('qr-mini-' + p.id);
-      if (el) QRGen.renderToCanvas(p.id, el);
-    });
-  }, 100);
-}
-
-function showQR(plantId) {
-  const plant = DB.getPlant(plantId);
-  UI.modal(
-    `📱 QR Code — ${plant.name}`,
-    `<p style="color:var(--muted);font-size:13px;margin-bottom:16px;">Scan this code to open the inspection form directly on your mobile device.</p>
-     <div id="qr-render" style="display:flex;justify-content:center;padding:20px;background:white;border-radius:12px;margin-bottom:16px;"></div>
-     <div style="font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);text-align:center;word-break:break-all;" id="qr-url-display"></div>`,
-    `<button onclick="QRGen.printLabel(DB.getPlant('${plantId}'));UI.closeModal();" style="${UI.btnStyle('primary')}">🖨️ Print Label</button>`
-  );
-  setTimeout(() => {
-    const url = QRGen.renderToCanvas(plantId, document.getElementById('qr-render'));
-    const urlEl = document.getElementById('qr-url-display');
-    if (urlEl && url) urlEl.textContent = url;
-  }, 100);
-}
-
-function printAllLabels() {
-  DB.getPlants().forEach((p, i) => setTimeout(() => QRGen.printLabel(p), i * 300));
-}
-
-// ============================================================
-// SUBMISSIONS
-// ============================================================
-let subFilter = 'ALL';
-function renderSubmissions() {
-  filterSubmissions(subFilter);
-}
-
-function filterSubmissions(filter) {
-  subFilter = filter;
-  document.querySelectorAll('.filter-tab').forEach(t => t.classList.toggle('active', t.dataset.filter === filter));
-  let subs = DB.getSubmissions();
-  if (filter !== 'ALL') subs = subs.filter(s => s.formId === filter);
-  const q = document.getElementById('sub-search')?.value?.toLowerCase() || '';
-  if (q) subs = subs.filter(s => s.operatorName?.toLowerCase().includes(q) || s.companyName?.toLowerCase().includes(q) || s.plantId?.toLowerCase().includes(q));
-  renderSubmissionTable(subs);
-}
-
-function filterSubmissionsText() { filterSubmissions(subFilter); }
-
-function renderSubmissionTable(subs) {
-  const tbody = document.getElementById('submissions-tbody');
-  const empty = document.getElementById('submissions-empty');
-  if (subs.length === 0) { tbody.innerHTML = ''; empty.style.display = ''; return; }
-  empty.style.display = 'none';
-  tbody.innerHTML = subs.map(s => {
-    const plant = DB.getPlant(s.plantId);
-    const score = Math.round((s.passed / s.total) * 100);
-    const color = score === 100 ? '#00C896' : score >= 90 ? '#FF6B35' : '#FF4757';
-    const status = score === 100 ? 'PASS' : score >= 90 ? 'PARTIAL' : 'FAIL';
-    const statusColor = status === 'PASS' ? '#00C896' : status === 'PARTIAL' ? '#FF6B35' : '#FF4757';
-    return `<tr>
-      <td>${UI.badge(s.formId, '#7B61FF')}</td>
-      <td><div style="font-weight:700;font-size:13px;">${plant?.photo || ''} ${plant?.name || s.plantId}</div><div class="mono" style="font-size:10px;">${s.plantId}</div></td>
-      <td><div style="font-weight:600;">${s.operatorName}</div></td>
-      <td class="mono" style="font-size:11px;">${s.companyName || '—'}</td>
-      <td class="mono" style="font-size:11px;">${UI.formatDate(s.submittedAt)}</td>
-      <td>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <div style="width:60px;height:6px;background:var(--border);border-radius:3px;overflow:hidden;">
-            <div style="width:${score}%;height:100%;background:${color};border-radius:3px;"></div>
-          </div>
-          <span style="color:${color};font-family:'Space Mono',monospace;font-size:12px;font-weight:700;">${score}%</span>
-        </div>
-      </td>
-      <td>${UI.badge(status, statusColor)}</td>
-      <td><button class="btn btn-secondary btn-sm" onclick="viewSubmission('${s.id}')">👁️ View</button></td>
-    </tr>`;
-  }).join('');
-}
-
-function viewSubmission(id) {
-  const s = DB.getSubmissions().find(s => s.id === id);
-  if (!s) return;
-  const plant = DB.getPlant(s.plantId);
-  const template = DB.getFormTemplate(s.formId);
-  const score = Math.round((s.passed / s.total) * 100);
-  const color = score === 100 ? '#00C896' : score >= 90 ? '#FF6B35' : '#FF4757';
-  
-  let sectionsHTML = '';
-  if (template && s.answers) {
-    let answerIdx = 0;
-    template.sections.forEach(sec => {
-      sectionsHTML += `<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:700;color:var(--accent);letter-spacing:1px;margin-bottom:8px;">${sec.title.toUpperCase()}</div>`;
-      sec.items.forEach(item => {
-        const ans = s.answers[answerIdx] || false;
-        sectionsHTML += `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;">
-          <span style="color:${ans?'#00C896':'#FF4757'};font-size:16px;flex-shrink:0;">${ans?'✓':'✕'}</span>
-          <span style="color:${ans?'var(--text)':'var(--muted)'};">${item}</span>
-        </div>`;
-        answerIdx++;
-      });
-      sectionsHTML += `</div>`;
-    });
-  }
-
-  UI.modal(
-    `${s.formId} — ${plant?.name || s.plantId}`,
-    `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px;">
-      <div style="background:var(--surface2);border-radius:10px;padding:12px;text-align:center;">
-        <div style="font-size:10px;color:var(--muted);letter-spacing:2px;">SCORE</div>
-        <div style="font-size:28px;font-weight:700;color:${color};font-family:'Space Mono',monospace;">${score}%</div>
-      </div>
-      <div style="background:var(--surface2);border-radius:10px;padding:12px;">
-        <div style="font-size:10px;color:var(--muted);letter-spacing:2px;">OPERATOR</div>
-        <div style="font-size:13px;font-weight:700;margin-top:4px;">${s.operatorName}</div>
-        <div style="font-size:11px;color:var(--muted);">${s.companyName}</div>
-      </div>
-      <div style="background:var(--surface2);border-radius:10px;padding:12px;">
-        <div style="font-size:10px;color:var(--muted);letter-spacing:2px;">SUBMITTED</div>
-        <div style="font-size:12px;font-weight:700;margin-top:4px;font-family:'Space Mono',monospace;">${UI.formatDate(s.submittedAt)}</div>
-      </div>
-    </div>
-    ${s.notes ? `<div style="background:rgba(255,183,0,0.1);border:1px solid rgba(255,183,0,0.3);border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px;"><strong>📝 Notes:</strong> ${s.notes}</div>` : ''}
-    <div style="max-height:300px;overflow-y:auto;">${sectionsHTML}</div>`
-  );
-}
-
-// ============================================================
-// TEMPLATES
-// ============================================================
-function renderTemplates() {
-  const templates = DB.getFormTemplates();
-  document.getElementById('templates-grid').innerHTML = templates.map(t => {
-    const totalItems = t.sections.reduce((sum, s) => sum + s.items.length, 0);
-    return `<div class="card">
-      <div class="card-header" style="border-bottom-color:${t.color}44;">
-        <div>
-          <div style="display:flex;align-items:center;gap:10px;">
-            <span style="font-family:'Space Mono',monospace;font-size:18px;font-weight:700;color:${t.color};">${t.id}</span>
-            ${UI.badge('ACTIVE', t.color)}
-          </div>
-          <div style="font-size:16px;font-weight:700;margin-top:4px;">${t.name}</div>
-        </div>
-      </div>
-      <div class="card-body">
-        <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">${t.description}</p>
-        <div style="display:flex;gap:12px;margin-bottom:16px;">
-          <div style="text-align:center;background:var(--surface2);border-radius:10px;padding:10px 16px;">
-            <div style="font-family:'Space Mono',monospace;font-size:22px;font-weight:700;color:${t.color};">${t.sections.length}</div>
-            <div style="font-size:10px;color:var(--muted);">SECTIONS</div>
-          </div>
-          <div style="text-align:center;background:var(--surface2);border-radius:10px;padding:10px 16px;">
-            <div style="font-family:'Space Mono',monospace;font-size:22px;font-weight:700;color:${t.color};">${totalItems}</div>
-            <div style="font-size:10px;color:var(--muted);">ITEMS</div>
-          </div>
-        </div>
-        <div style="margin-bottom:16px;">
-          ${t.sections.map(s => `<div style="font-size:12px;color:var(--muted);padding:4px 0;border-bottom:1px solid var(--border);">
-            <span style="color:${t.color};">▸</span> ${s.title} <span style="float:right;font-family:'Space Mono',monospace;">${s.items.length} items</span>
-          </div>`).join('')}
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <a href="form.html?form=${t.id}" target="_blank" class="btn btn-primary btn-sm" style="flex:1;justify-content:center;">Preview</a>
-          <button class="btn btn-secondary btn-sm" onclick="viewTemplate('${t.id}')">👁️</button>
-          <button class="btn btn-secondary btn-sm" onclick="printTemplate('${t.id}')">🖨️</button>
-          ${t.custom ? `<button class="btn btn-danger btn-sm" onclick="deleteTemplate('${t.id}')">🗑️</button>` : ''}
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function viewTemplate(id) {
-  const t = DB.getFormTemplate(id);
-  const totalItems = t.sections.reduce((sum, s) => sum + s.items.length, 0);
-  let html = `<p style="color:var(--muted);margin-bottom:20px;">${t.description}</p>`;
-  t.sections.forEach((sec, si) => {
-    html += `<div style="margin-bottom:16px;background:var(--surface2);border-radius:10px;padding:14px;">
-      <div style="font-size:12px;font-weight:700;color:${t.color};letter-spacing:1px;margin-bottom:10px;">SECTION ${si+1}: ${sec.title.toUpperCase()}</div>
-      ${sec.items.map((item, ii) => `<div style="display:flex;align-items:flex-start;gap:10px;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border);">
-        <span style="color:var(--muted);font-family:'Space Mono',monospace;flex-shrink:0;">${si+1}.${ii+1}</span>
-        <span>${item}</span>
-      </div>`).join('')}
-    </div>`;
-  });
-  UI.modal(`${t.id} — ${t.name}`, html);
-}
-
-// ============================================================
-// FORM TEMPLATE IMPORT & MANAGEMENT
-// ============================================================
-
-function openCreateTemplate() {
-  const role = AUTH.getRole();
-  if (!['admin','project_manager','site_manager','safety_officer'].includes(role)) {
-    UI.toast('You do not have permission to create templates','error'); return;
-  }
-  const colors = ['#2E7D52','#C9A84C','#CC3333','#7B61FF','#FF6B35','#2255AA'];
-  const html = `
-    <div class="form-group"><label class="form-label">FORM ID (e.g. GA5, RA1)</label>
-      <input type="text" class="form-input" id="t-id" placeholder="GA5" maxlength="6"></div>
-    <div class="form-group"><label class="form-label">FORM NAME *</label>
-      <input type="text" class="form-input" id="t-name" placeholder="e.g. GA5 — Equipment Handover"></div>
-    <div class="form-group"><label class="form-label">DESCRIPTION</label>
-      <input type="text" class="form-input" id="t-desc" placeholder="Brief description of this form"></div>
-    <div class="form-group"><label class="form-label">COLOUR</label>
-      <div style="display:flex;gap:8px;margin-top:4px;">
-        ${colors.map(c => `<div onclick="document.getElementById('t-color').value='${c}';document.querySelectorAll('.cpick').forEach(x=>x.style.outline='');this.style.outline='2px solid white';" class="cpick" style="width:28px;height:28px;border-radius:50%;background:${c};cursor:pointer;"></div>`).join('')}
-        <input type="hidden" id="t-color" value="${colors[0]}">
-      </div>
-    </div>
-    <div id="sections-wrap">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-        <span style="font-size:11px;color:var(--muted);letter-spacing:2px;font-family:'Space Mono',monospace;">SECTIONS & ITEMS</span>
-        <button class="btn btn-secondary btn-sm" type="button" onclick="addTemplateSection()">+ Add Section</button>
-      </div>
-      <div id="sections-list"></div>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" type="button" onclick="UI.closeModal()">Cancel</button>
-      <button class="btn btn-primary" type="button" onclick="saveNewTemplate()">💾 Save Template</button>
-    </div>`;
-  document.getElementById('modal-title').textContent = '+ Create Form Template';
-  document.getElementById('modal-body').innerHTML = html;
-  document.getElementById('modal').style.display = 'flex';
-  addTemplateSection(); // start with one section
-}
-
-let sectionCount = 0;
-function addTemplateSection() {
-  sectionCount++;
-  const id = 's' + sectionCount;
-  const div = document.createElement('div');
-  div.id = 'sec-' + id;
-  div.style.cssText = 'background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:10px;';
-  div.innerHTML = `
-    <div style="display:flex;gap:8px;margin-bottom:8px;">
-      <input type="text" class="form-input" id="stitle-${id}" placeholder="Section title e.g. Visual Inspection" style="flex:1;">
-      <button class="btn btn-danger btn-sm" type="button" onclick="document.getElementById('sec-${id}').remove()">✕</button>
-    </div>
-    <textarea class="form-input" id="sitems-${id}" rows="4"
-      placeholder="One checklist item per line:&#10;Check oil level&#10;Inspect tyres&#10;Test horn"></textarea>`;
-  document.getElementById('sections-list').appendChild(div);
-}
-
-function saveNewTemplate() {
-  const id    = (document.getElementById('t-id').value.trim() || 'CUSTOM').toUpperCase().replace(/[^A-Z0-9]/g,'').substring(0,6);
-  const name  = document.getElementById('t-name').value.trim();
-  const desc  = document.getElementById('t-desc').value.trim();
-  const color = document.getElementById('t-color').value;
-  if (!name) { UI.toast('Form name is required','error'); return; }
-
-  const sections = [];
-  document.querySelectorAll('[id^="sec-s"]').forEach(el => {
-    const sid   = el.id.replace('sec-','');
-    const title = document.getElementById('stitle-' + sid)?.value.trim();
-    const raw   = document.getElementById('sitems-' + sid)?.value.trim();
-    if (!title || !raw) return;
-    const items = raw.split('\n').map(l=>l.trim()).filter(Boolean);
-    if (items.length) sections.push({ title, items });
-  });
-
-  if (!sections.length) { UI.toast('Add at least one section with items','error'); return; }
-
-  const templates = DB.getFormTemplates();
-  const existing  = templates.findIndex(t => t.id === id);
-  const template  = { id, name, description: desc || name, color, sections, custom: true, createdAt: new Date().toISOString() };
-
-  if (existing >= 0) {
-    if (!confirm(`A template with ID "${id}" already exists. Overwrite?`)) return;
-    templates[existing] = template;
-  } else {
-    templates.push(template);
-  }
-  DB.set('formTemplates', templates);
-  UI.toast(`Template "${id}" saved`, 'success');
-  UI.closeModal();
-  renderTemplates();
-}
-
-function deleteTemplate(id) {
-  const t = DB.getFormTemplate(id);
-  if (!t.custom) { UI.toast('Built-in templates cannot be deleted','error'); return; }
-  if (!confirm(`Delete template "${t.name}"? This cannot be undone.`)) return;
-  const templates = DB.getFormTemplates().filter(x => x.id !== id);
-  DB.set('formTemplates', templates);
-  UI.toast('Template deleted','warning');
-  renderTemplates();
-}
-
-// ── IMPORT FROM FILE ──────────────────────────────────────────
-function importChecklist(input) {
-  const file = input.files[0];
-  if (!file) return;
-  input.value = '';
-
-  const ext = file.name.split('.').pop().toLowerCase();
-  const reader = new FileReader();
-
-  reader.onload = e => {
-    let text = '';
-    if (ext === 'json') {
-      try {
-        const data = JSON.parse(e.target.result);
-        // If it already matches our template format, import directly
-        if (data.sections && data.name) {
-          previewImport([{ name: data.name, id: data.id||'IMPORT', sections: data.sections, color: data.color||'#2E7D52' }]);
-          return;
-        }
-        text = JSON.stringify(data, null, 2);
-      } catch { text = e.target.result; }
-    } else {
-      text = e.target.result;
-    }
-    const parsed = parseChecklistText(text, file.name);
-    previewImport(parsed);
-  };
-
-  if (ext === 'pdf' || ext === 'docx') {
-    // For PDF/DOCX, we can't parse binary in browser — show manual entry pre-filled
-    UI.modal('📂 Import Checklist',
-      `<p style="color:var(--muted);margin-bottom:16px;">
-        <strong>PDF / Word files</strong> cannot be read directly in the browser.<br>
-        Please copy and paste the checklist text below — one item per line, use a blank line or "Section:" to separate sections.
-      </p>
-      <textarea class="form-input" id="paste-import" rows="12" placeholder="Section: Visual Inspection&#10;Check oil level&#10;Inspect tyres&#10;Check lights&#10;&#10;Section: Documentation&#10;Operator licence present&#10;GA1 cert current"></textarea>
-      <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="UI.closeModal()">Cancel</button>
-        <button class="btn btn-primary" onclick="parseAndPreviewPaste()">Parse & Preview →</button>
-      </div>`
-    );
-    document.getElementById('modal-title').textContent = '📂 Import — ' + file.name;
-    return;
-  }
-
-  reader.readAsText(file);
-}
-
-function parseAndPreviewPaste() {
-  const text = document.getElementById('paste-import')?.value || '';
-  const parsed = parseChecklistText(text, 'Imported Form');
-  UI.closeModal();
-  previewImport(parsed);
-}
-
-function parseChecklistText(text, filename) {
-  // Smart parser: detects sections by "Section:", numbered headings, or blank-line groups
-  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-  const sections = [];
-  let current = { title: 'General', items: [] };
-  const sectionPattern = /^(section|part|group|category|heading)[:\s]+(.+)/i;
-  const numberedSection = /^(\d+\.?\s+[A-Z][A-Z\s&/]{3,}$)/;
-
-  lines.forEach(line => {
-    const secMatch = line.match(sectionPattern);
-    const numMatch = line.match(numberedSection);
-    if (secMatch) {
-      if (current.items.length) sections.push({...current});
-      current = { title: secMatch[2].trim(), items: [] };
-    } else if (numMatch && line.length < 60) {
-      if (current.items.length) sections.push({...current});
-      current = { title: line.replace(/^\d+\.?\s*/, ''), items: [] };
-    } else if (line.startsWith('#')) {
-      if (current.items.length) sections.push({...current});
-      current = { title: line.replace(/^#+\s*/, ''), items: [] };
-    } else if (line.length > 3 && !line.match(/^[-=]{3,}$/)) {
-      // Strip leading bullets/numbers
-      const item = line.replace(/^[\-\*\•\d]+[\.\)\s]+/, '').trim();
-      if (item.length > 2) current.items.push(item);
-    }
-  });
-  if (current.items.length) sections.push(current);
-
-  const name = filename.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
-  return [{ id: 'IMP', name, sections, color: '#7B61FF' }];
-}
-
-function previewImport(templates) {
-  const wrap = document.getElementById('import-preview');
-  if (!templates.length || !templates[0].sections.length) {
-    wrap.style.display = '';
-    wrap.innerHTML = `<div style="background:rgba(255,71,87,0.1);border:1px solid rgba(255,71,87,0.3);border-radius:12px;padding:20px;margin-bottom:20px;">
-      ⚠️ Could not detect checklist items. Try pasting the text using the import button.
-    </div>`;
-    return;
-  }
-  const t = templates[0];
-  const totalItems = t.sections.reduce((s,sec)=>s+sec.items.length,0);
-  wrap.style.display = '';
-  wrap.innerHTML = `
-    <div style="background:rgba(123,97,255,0.08);border:1px solid rgba(123,97,255,0.3);border-radius:16px;padding:22px;margin-bottom:24px;">
-      <div style="font-size:15px;font-weight:800;margin-bottom:4px;">📂 Import Preview — ${t.name}</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">${t.sections.length} sections · ${totalItems} checklist items detected</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;max-height:250px;overflow-y:auto;">
-        ${t.sections.map(s=>`<div style="background:var(--surface2);border-radius:8px;padding:10px 12px;">
-          <div style="font-size:11px;font-weight:700;color:#7B61FF;margin-bottom:6px;">${s.title}</div>
-          ${s.items.slice(0,4).map(i=>`<div style="font-size:11px;color:var(--muted);padding:2px 0;">▸ ${i}</div>`).join('')}
-          ${s.items.length>4?`<div style="font-size:10px;color:var(--muted);margin-top:4px;">+${s.items.length-4} more items...</div>`:''}
-        </div>`).join('')}
-      </div>
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-        <input type="text" class="form-input" id="import-id"   value="${t.id}"   placeholder="Form ID" style="width:90px;" maxlength="6">
-        <input type="text" class="form-input" id="import-name" value="${t.name}" placeholder="Form name" style="flex:1;min-width:160px;">
-        <button class="btn btn-primary" onclick="confirmImport(${JSON.stringify(t).replace(/"/g,'&quot;')})">✅ Import to System</button>
-        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('import-preview').style.display='none'">✕ Dismiss</button>
-      </div>
-    </div>`;
-}
-
-function confirmImport(t) {
-  const id   = (document.getElementById('import-id')?.value  || t.id  || 'IMP').toUpperCase().replace(/[^A-Z0-9]/g,'').substring(0,6);
-  const name = (document.getElementById('import-name')?.value|| t.name).trim();
-  const templates = DB.getFormTemplates();
-  const existing  = templates.findIndex(x => x.id === id);
-  const template  = { ...t, id, name, custom: true, importedAt: new Date().toISOString() };
-  if (existing >= 0) {
-    if (!confirm(`Template "${id}" already exists. Overwrite?`)) return;
-    templates[existing] = template;
-  } else {
-    templates.push(template);
-  }
-  DB.set('formTemplates', templates);
-  UI.toast(`"${name}" imported — ${t.sections.length} sections ready`, 'success');
-  document.getElementById('import-preview').style.display = 'none';
-  renderTemplates();
-}
-
-// ── PRINT TEMPLATE in Robert Quinn Ltd format ─────────────────
-function printTemplate(id) {
-  const t = DB.getFormTemplate(id);
-  const settings = DB.getSettings();
-  const today = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
-  const totalItems = t.sections.reduce((s,sec)=>s+sec.items.length,0);
-
-  const rows = t.sections.map((sec,si) =>
-    sec.items.map((item,ii) =>
-      `<tr>
-        <td style="width:36px;text-align:center;color:#666;font-size:10px;">${si+1}.${ii+1}</td>
-        <td>${item}</td>
-        <td style="width:70px;text-align:center;border-left:1px solid #ddd;"><div style="width:20px;height:20px;border:2px solid #1B5E35;border-radius:4px;display:inline-block;"></div></td>
-        <td style="width:70px;text-align:center;border-left:1px solid #ddd;"><div style="width:20px;height:20px;border:2px solid #CC0000;border-radius:4px;display:inline-block;"></div></td>
-        <td style="width:70px;text-align:center;border-left:1px solid #ddd;"><div style="width:20px;height:20px;border:2px solid #999;border-radius:4px;display:inline-block;"></div></td>
-        <td style="width:180px;border-left:1px solid #ddd;"></td>
-      </tr>
-      ${ ii === sec.items.length - 1 ? '<tr style="height:8px;"><td colspan="6"></td></tr>' : ''}`
-    ).join('')
-  ).join('');
-
-  const win = window.open('','_blank');
-  win.document.write(`<!DOCTYPE html><html><head><title>${t.id} — ${settings.companyName}</title>
-  <style>
-    @page { size: A4; margin: 15mm; }
-    body { font-family: Arial, sans-serif; font-size: 11px; color: #111; margin: 0; }
-    .header { display: flex; justify-content: space-between; align-items: flex-start;
-              border-bottom: 3px solid #1B5E35; padding-bottom: 10px; margin-bottom: 14px; }
-    .co-name { font-size: 18px; font-weight: bold; color: #1B5E35; }
-    .form-id  { font-size: 28px; font-weight: bold; color: #1B5E35; font-family: monospace; }
-    .form-meta { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 14px; }
-    .meta-box { border: 1px solid #ddd; border-radius: 4px; padding: 8px 10px; }
-    .meta-lbl { font-size: 8px; color: #999; letter-spacing: 1px; text-transform: uppercase; }
-    .meta-val { font-size: 12px; font-weight: bold; margin-top: 2px; min-height: 20px; }
-    table { width: 100%; border-collapse: collapse; }
-    th { background: #1B5E35; color: white; padding: 7px 8px; text-align: left; font-size: 9px; letter-spacing: 1px; }
-    th.center { text-align: center; }
-    td { padding: 7px 8px; border-bottom: 1px solid #eee; vertical-align: middle; }
-    tr:nth-child(even) td { background: #fafafa; }
-    .section-hdr td { background: #f0f7f3 !important; font-weight: bold; color: #1B5E35; font-size: 10px; letter-spacing: 1px; border-top: 2px solid #1B5E35; }
-    .sig-box { margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .sig-field { border: 1px solid #ddd; border-radius: 4px; padding: 10px; }
-    .sig-lbl { font-size: 8px; color: #999; letter-spacing: 1px; }
-    .sig-line { border-bottom: 1px solid #333; height: 36px; margin-top: 8px; }
-    .footer { margin-top: 16px; font-size: 8px; color: #aaa; text-align: center; border-top: 1px solid #eee; padding-top: 6px; }
-    @media print { body { font-size: 10px; } }
-  </style></head><body>
-  <div class="header">
-    <div>
-      <div class="co-name">${settings.companyName}</div>
-      <div style="font-size:12px;color:#555;margin-top:2px;">${settings.siteName}</div>
-    </div>
-    <div style="text-align:right;">
-      <div class="form-id">${t.id}</div>
-      <div style="font-size:11px;color:#555;">${t.name}</div>
-    </div>
-  </div>
-
-  <div class="form-meta">
-    <div class="meta-box"><div class="meta-lbl">Plant / Equipment</div><div class="meta-val"></div></div>
-    <div class="meta-box"><div class="meta-lbl">Date</div><div class="meta-val"></div></div>
-    <div class="meta-box"><div class="meta-lbl">Operator Name</div><div class="meta-val"></div></div>
-    <div class="meta-box"><div class="meta-lbl">Licence / Ticket No.</div><div class="meta-val"></div></div>
-    <div class="meta-box"><div class="meta-lbl">Company</div><div class="meta-val"></div></div>
-    <div class="meta-box"><div class="meta-lbl">Supervisor</div><div class="meta-val"></div></div>
-  </div>
-
-  <table>
-    <thead><tr>
-      <th style="width:36px;">#</th>
-      <th>INSPECTION ITEM</th>
-      <th class="center" style="width:70px;color:#90EE90;">✓ PASS</th>
-      <th class="center" style="width:70px;color:#FFB3B3;">✕ FAIL</th>
-      <th class="center" style="width:70px;color:#ccc;">N/A</th>
-      <th style="width:180px;">REMARKS</th>
-    </tr></thead>
-    <tbody>
-      ${t.sections.map((sec,si) => `
-        <tr class="section-hdr"><td colspan="6">SECTION ${si+1}: ${sec.title.toUpperCase()}</td></tr>
-        ${sec.items.map((item,ii) => `<tr>
-          <td style="text-align:center;color:#666;font-size:10px;">${si+1}.${ii+1}</td>
-          <td>${item}</td>
-          <td style="text-align:center;border-left:1px solid #ddd;"><div style="width:20px;height:20px;border:2px solid #1B5E35;border-radius:3px;margin:0 auto;"></div></td>
-          <td style="text-align:center;border-left:1px solid #ddd;"><div style="width:20px;height:20px;border:2px solid #CC0000;border-radius:3px;margin:0 auto;"></div></td>
-          <td style="text-align:center;border-left:1px solid #ddd;"><div style="width:20px;height:20px;border:2px solid #999;border-radius:3px;margin:0 auto;"></div></td>
-          <td style="border-left:1px solid #ddd;"></td>
-        </tr>`).join('')}
-        <tr style="height:6px;"><td colspan="6"></td></tr>`
-      ).join('')}
-    </tbody>
-  </table>
-
-  <div style="margin-top:12px;background:#f9f9f9;border:1px solid #eee;border-radius:4px;padding:10px;">
-    <strong style="font-size:10px;">NOTES / DEFECTS:</strong>
-    <div style="min-height:40px;border-bottom:1px solid #ddd;margin-top:4px;"></div>
-  </div>
-
-  <div class="sig-box">
-    <div class="sig-field">
-      <div class="sig-lbl">OPERATOR SIGNATURE</div>
-      <div class="sig-line"></div>
-      <div style="font-size:8px;color:#999;margin-top:4px;">Print name: _____________________________ Date: ___________</div>
-    </div>
-    <div class="sig-field">
-      <div class="sig-lbl">SUPERVISOR SIGNATURE</div>
-      <div class="sig-line"></div>
-      <div style="font-size:8px;color:#999;margin-top:4px;">Print name: _____________________________ Date: ___________</div>
-    </div>
-  </div>
-
-  <div class="footer">${settings.companyName} · ${t.id} — ${t.name} · ${settings.siteName} · Total Items: ${totalItems} · Form printed ${today}</div>
-  <script>setTimeout(()=>window.print(),600)<\/script>
-  </body></html>`);
-}
-
-// ============================================================
-// COMPLIANCE
-// ============================================================
-function renderCompliance() {
-  const plants = DB.getPlants();
-  const issues = DB.checkCompliance();
-  const total = plants.length * 2; // daily + weekly per plant
-  const passed = total - issues.length;
-  const rate = total > 0 ? Math.round((passed / total) * 100) : 100;
-
-  document.getElementById('compliance-overview').innerHTML = `
-    <div style="display:flex;align-items:center;gap:24px;margin-bottom:20px;">
-      <div style="text-align:center;">
-        <div style="font-family:'Space Mono',monospace;font-size:48px;font-weight:700;color:${rate>=80?'#00C896':rate>=60?'#FF6B35':'#FF4757'};">${rate}%</div>
-        <div style="font-size:12px;color:var(--muted);">COMPLIANCE RATE</div>
-      </div>
-      <div style="flex:1;">
-        <div class="compliance-bar-wrap" style="height:16px;border-radius:8px;">
-          <div class="compliance-bar" style="width:${rate}%;background:${rate>=80?'#00C896':rate>=60?'#FF6B35':'#FF4757'};border-radius:8px;height:100%;"></div>
-        </div>
-        <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:12px;color:var(--muted);font-family:'Space Mono',monospace;">
-          <span>${passed} checks passed</span><span>${issues.length} issues found</span>
-        </div>
-      </div>
-    </div>`;
-
-  const table = document.getElementById('compliance-table');
-  const empty = document.getElementById('compliance-empty');
-  if (issues.length === 0) { table.innerHTML = ''; empty.style.display = ''; return; }
-  empty.style.display = 'none';
-  table.innerHTML = issues.map(i => `<tr>
-    <td style="font-weight:700;">${i.plantName}<br><span class="mono" style="font-size:10px;">${i.plantId}</span></td>
-    <td style="font-size:13px;">${i.issue}</td>
-    <td>${UI.badge(i.severity.toUpperCase(), i.severity==='warning'?'#FFB800':'#6B7A99')}</td>
-    <td><a href="form.html?plant=${i.plantId}" target="_blank" class="btn btn-primary btn-sm">📋 Fill Now</a></td>
-  </tr>`).join('');
-}
-
-// ============================================================
-// NOTIFICATIONS
-// ============================================================
-function renderNotifications() {
-  const notifs = DB.getNotifications();
-  const list = document.getElementById('notif-list');
-  if (notifs.length === 0) {
-    list.innerHTML = `<div class="empty-state"><span class="icon">🔔</span><strong>No notifications</strong><p>System alerts will appear here</p></div>`;
-    return;
-  }
-  const icons  = { info: 'ℹ️', warning: '⚠️', success: '✅', error: '🚨' };
-  const colors = { info: '#7B61FF', warning: '#FFB800', success: '#00C896', error: '#FF4757' };
-
-  list.innerHTML = notifs.map((n, idx) => {
-    // Determine if this notification is actionable and where it links
-    const link = notifLink(n);
-    const clickable = !!link;
-    return `
-    <div onclick="${clickable ? 'notifClick(' + idx + ')' : ''}"
-      style="display:flex;gap:14px;padding:16px;border-bottom:1px solid var(--border);
-             opacity:${n.read ? 0.55 : 1};
-             border-radius:10px;margin-bottom:2px;
-             ${clickable ? 'cursor:pointer;transition:background 0.15s;' : ''}
-             background:${clickable && !n.read ? 'rgba(255,255,255,0.02)' : 'transparent'};"
-      onmouseover="${clickable ? "this.style.background='rgba(255,255,255,0.05)'" : ''}"
-      onmouseout="${clickable ? "this.style.background='" + (clickable && !n.read ? 'rgba(255,255,255,0.02)' : 'transparent') + "'" : ''}">
-      <span style="font-size:22px;flex-shrink:0;">${icons[n.type] || 'ℹ️'}</span>
-      <div style="flex:1;min-width:0;">
-        <div style="font-weight:700;font-size:14px;color:${colors[n.type]||'var(--text)'};">${n.title}</div>
-        <div style="font-size:13px;color:var(--muted);margin-top:3px;">${n.message}</div>
-        <div style="display:flex;align-items:center;gap:12px;margin-top:6px;">
-          <span style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;">${UI.timeAgo(n.createdAt)}</span>
-          ${clickable ? `<span style="font-size:11px;color:var(--accent);font-family:'Space Mono',monospace;font-weight:700;">VIEW →</span>` : ''}
-        </div>
-      </div>
-      ${!n.read ? '<span style="width:8px;height:8px;background:var(--accent);border-radius:50%;margin-top:6px;flex-shrink:0;"></span>' : ''}
-    </div>`;
-  }).join('');
-  updateNotifBadge();
-}
-
-function notifLink(n) {
-  if (n.link) return n.link;
-  const t = (n.title || '').toLowerCase();
-  const m = (n.message || '').toLowerCase();
-  if (t.includes('defect') || m.includes('defect') || m.includes('failed item')) return 'defects';
-  if (t.includes('compliance') || m.includes('not completed') || m.includes('overdue')) return 'compliance';
-  if (t.includes('plant added') || t.includes('plant returned') || t.includes('out of service')) return 'plants';
-  if (t.includes('lifting') || m.includes('thorough exam') || m.includes('colour tag')) return 'lifting';
-  if (t.includes('completed') || m.includes('inspection') || m.includes('score')) return 'submissions';
-  return null;
-}
-
-function notifClick(idx) {
-  const notifs = DB.getNotifications();
-  const n = notifs[idx];
-  if (!n) return;
-  // Mark this one read
-  notifs[idx].read = true;
-  DB.sset('notifications', notifs);
-  updateNotifBadge();
-  const dest = notifLink(n);
-  if (dest) navigateTo(dest);
-}
-
-function markAllRead() {
-  DB.markAllRead();
-  renderNotifications();
-  UI.toast('All notifications marked as read', 'success');
-}
-
-function updateNotifBadge() {
-  const count = DB.getUnreadCount();
-  const b = document.getElementById('notif-badge');
-  if (count > 0) { b.style.display = ''; b.textContent = count; } else { b.style.display = 'none'; }
-}
-
-// ============================================================
-// ============================================================
-// DEFECT TRACKER
-// ============================================================
-let defectFilter = 'all';
-function filterDefects(f) {
-  defectFilter = f;
-  ['all','open','resolved'].forEach(x => {
-    const el = document.getElementById('df-' + (x==='resolved'?'res':x==='open'?'open':'all'));
-    if (el) el.className = 'btn btn-sm ' + (x===f ? 'btn-primary' : 'btn-secondary');
-  });
-  renderDefects();
-}
-
-function renderDefects() {
-  const all = DB.getDefects();
-  const open = all.filter(d => d.status === 'open');
-  const res  = all.filter(d => d.status === 'resolved');
-  const week = new Date(); week.setDate(week.getDate()-7);
-  const thisWeek = all.filter(d => new Date(d.reportedAt) > week);
-  const affected = new Set(open.map(d => d.plantId));
-
-  document.getElementById('def-stat-open').textContent   = open.length;
-  document.getElementById('def-stat-res').textContent    = res.length;
-  document.getElementById('def-stat-plants').textContent = affected.size;
-  document.getElementById('def-stat-week').textContent   = thisWeek.length;
-
-  // Update nav badge
-  const badge = document.getElementById('defects-badge');
-  if (badge) { badge.textContent = open.length; badge.style.display = open.length > 0 ? '' : 'none'; }
-
-  let list = defectFilter === 'open' ? open : defectFilter === 'resolved' ? res : all;
-
-  const container = document.getElementById('defect-list');
-  if (!container) return;
-  if (list.length === 0) {
-    container.innerHTML = `<div style="text-align:center;padding:60px;color:var(--muted);">${defectFilter==='open' ? '✅ No open defects — all clear!' : '🔧 No defects recorded yet'}</div>`;
-    return;
-  }
-
-  container.innerHTML = list.map(d => {
-    const plant = DB.getPlant(d.plantId);
-    const isOpen = d.status === 'open';
-    const session = AUTH.getSession();
-    const canResolve = ['admin','project_manager','site_manager','safety_officer'].includes(AUTH.getRole());
-    return `<div style="background:var(--surface);border:1px solid ${isOpen?'rgba(255,71,87,0.3)':'rgba(46,125,82,0.2)'};border-radius:14px;padding:18px 20px;margin-bottom:12px;transition:all 0.2s;">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:200px;">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-            <span style="background:${isOpen?'rgba(255,71,87,0.15)':'rgba(46,125,82,0.15)'};color:${isOpen?'var(--danger)':'var(--accent)'};border:1px solid ${isOpen?'rgba(255,71,87,0.3)':'rgba(46,125,82,0.3)'};padding:2px 10px;border-radius:20px;font-size:10px;font-weight:700;font-family:'Space Mono',monospace;">${isOpen?'🔴 OPEN':'✅ RESOLVED'}</span>
-            <span style="font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);">${d.id}</span>
-          </div>
-          <div style="font-size:15px;font-weight:700;margin-bottom:4px;">${d.item}</div>
-          <div style="font-size:12px;color:var(--muted);">
-            🏗️ ${plant?.name||d.plantId} · 📋 ${d.formId} · 👷 ${d.operatorName} · ${UI.timeAgo(d.reportedAt)}
-          </div>
-          ${d.section ? `<div style="font-size:11px;color:var(--muted);margin-top:3px;font-family:'Space Mono',monospace;">Section: ${d.section}</div>` : ''}
-          ${!isOpen ? `<div style="margin-top:8px;font-size:12px;color:var(--accent);">✅ Resolved by ${d.resolvedBy} · ${UI.formatDateShort(d.resolvedAt)}${d.resolveNotes?' — '+d.resolveNotes:''}</div>` : ''}
-        </div>
-        ${isOpen && canResolve ? `
-        <button class="btn btn-primary btn-sm" onclick="resolveDefect('${d.id}')">✅ Mark Resolved</button>` : ''}
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function resolveDefect(id) {
-  const notes = prompt('Resolution notes (optional):') ?? '';
-  if (notes === null) return; // cancelled
-  const name = AUTH.getSession()?.name || 'Unknown';
-  DB.resolveDefect(id, name, notes);
-  UI.toast('Defect marked as resolved', 'success');
-  renderDefects();
-  // Update plant open-defect count
-  renderPlants();
-}
-
-function printDefectReport() {
-  const defects = DB.getDefects();
-  const settings = DB.getSettings();
-  const today = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
-  const win = window.open('','_blank');
-  const rows = defects.map(d => {
-    const plant = DB.getPlant(d.plantId);
-    return `<tr>
-      <td>${d.id}</td><td>${plant?.name||d.plantId}</td><td>${d.formId}</td>
-      <td><strong>${d.item}</strong>${d.section?'<br><small>'+d.section+'</small>':''}</td>
-      <td>${d.operatorName}</td>
-      <td>${new Date(d.reportedAt).toLocaleDateString('en-GB')}</td>
-      <td style="${d.status==='open'?'color:#CC0000;font-weight:bold;':''}">${d.status==='open'?'OPEN':'RESOLVED'}</td>
-      <td>${d.resolvedBy||'—'}</td>
-    </tr>`;
-  }).join('');
-  win.document.write(`<!DOCTYPE html><html><head><title>Defect Report</title>
-  <style>body{font-family:Arial,sans-serif;margin:30px;font-size:11px;}
-  .header{display:flex;justify-content:space-between;border-bottom:3px solid #1B5E35;padding-bottom:12px;margin-bottom:16px;}
-  .company{font-size:18px;font-weight:bold;color:#1B5E35;}
-  table{width:100%;border-collapse:collapse;}
-  th{background:#1B5E35;color:white;padding:7px 8px;text-align:left;font-size:9px;letter-spacing:1px;}
-  td{padding:6px 8px;border-bottom:1px solid #eee;}
-  tr:nth-child(even) td{background:#f9f9f9;}
-  </style></head><body>
-  <div class="header"><div><div class="company">${settings.companyName}</div><h1 style="font-size:16px;">Defect Report</h1></div>
-  <div style="text-align:right;font-size:11px;color:#666;">Site: ${settings.siteName}<br>Printed: ${today}</div></div>
-  <table><tr><th>ID</th><th>PLANT</th><th>FORM</th><th>DEFECT</th><th>REPORTED BY</th><th>DATE</th><th>STATUS</th><th>RESOLVED BY</th></tr>
-  ${rows}</table>
-  <script>setTimeout(()=>window.print(),500)<\/script></body></html>`);
-}
-
-// ============================================================
-// PLANT OUT OF SERVICE
-// ============================================================
-function toggleOOS(plantId) {
-  const plant = DB.getPlant(plantId);
-  if (plant.outOfService) {
-    returnToService(plantId);
-  } else {
-    const reason = prompt('Reason for taking out of service:');
-    if (!reason) return;
-    const name = AUTH.getSession()?.name || 'Unknown';
-    DB.setOutOfService(plantId, true, reason, name);
-    UI.toast(`${plant.name} marked out of service`, 'warning');
-    renderPlants();
-    renderDashboard();
-  }
-}
-
-function returnToService(plantId) {
-  const plant = DB.getPlant(plantId);
-  if (!confirm(`Return ${plant.name} to service?`)) return;
-  const name = AUTH.getSession()?.name || 'Unknown';
-  DB.setOutOfService(plantId, false, '', name);
-  UI.toast(`${plant.name} returned to service`, 'success');
-  renderPlants();
-  renderDashboard();
-}
-
-// ============================================================
-// WEEKLY SUMMARY REPORT
-// ============================================================
-function printWeeklySummary() {
-  const settings = DB.getSettings();
-  const plants   = DB.getPlants();
-  const subs     = DB.getSubmissionsThisWeek();
-  const defects  = DB.getDefects().filter(d => {
-    const w = new Date(); w.setDate(w.getDate()-7);
-    return new Date(d.reportedAt) > w;
-  });
-  const today  = new Date().toLocaleDateString('en-GB',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
-  const weekStart = new Date(); weekStart.setDate(weekStart.getDate()-7);
-  const weekStr = weekStart.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}) + ' – ' + new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
-
-  const plantRows = plants.map(p => {
-    const pSubs  = subs.filter(s => s.plantId === p.id);
-    const scores = pSubs.map(s => Math.round((s.passed/s.total)*100));
-    const avg    = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0)/scores.length) : null;
-    const openDef= DB.getDefectsForPlant(p.id).filter(d=>d.status==='open').length;
-    const oos    = p.outOfService ? '<span style="color:#CC0000;font-weight:bold;">OUT OF SERVICE</span>' : '';
-    const color  = avg === null ? '#999' : avg === 100 ? '#1B5E35' : avg >= 90 ? '#AA6600' : '#CC0000';
-    return `<tr>
-      <td>${p.id}</td><td><strong>${p.name}</strong>${oos?'<br>'+oos:''}</td>
-      <td>${p.location}</td><td style="text-align:center;">${pSubs.length}</td>
-      <td style="text-align:center;color:${color};font-weight:bold;">${avg !== null ? avg+'%' : '—'}</td>
-      <td style="text-align:center;${openDef>0?'color:#CC0000;font-weight:bold;':''}">${openDef}</td>
-    </tr>`;
-  }).join('');
-
-  const defRows = defects.map(d => {
-    const plant = DB.getPlant(d.plantId);
-    return `<tr>
-      <td>${d.id}</td><td>${plant?.name||d.plantId}</td><td>${d.formId}</td>
-      <td>${d.item}${d.section?'<br><small style="color:#999">'+d.section+'</small>':''}</td>
-      <td>${d.operatorName}</td>
-      <td>${new Date(d.reportedAt).toLocaleDateString('en-GB')}</td>
-      <td style="${d.status==='open'?'color:#CC0000;font-weight:bold;':''}">${d.status.toUpperCase()}</td>
-    </tr>`;
-  }).join('');
-
-  const total = subs.length;
-  const passing = subs.filter(s => Math.round((s.passed/s.total)*100) === 100).length;
-  const failedSubs = subs.filter(s => s.failed > 0).length;
-
-  const win = window.open('','_blank');
-  win.document.write(`<!DOCTYPE html><html><head><title>Weekly Safety Summary</title>
-  <style>
-    body{font-family:Arial,sans-serif;margin:30px;font-size:11px;color:#111;}
-    .header{border-bottom:3px solid #1B5E35;padding-bottom:12px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:flex-start;}
-    .company{font-size:20px;font-weight:bold;color:#1B5E35;}
-    .report-title{font-size:15px;color:#333;margin-top:4px;}
-    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
-    .stat{border:1px solid #ddd;border-radius:6px;padding:12px;text-align:center;}
-    .stat-val{font-size:28px;font-weight:bold;color:#1B5E35;}
-    .stat-lbl{font-size:9px;color:#666;letter-spacing:1px;margin-top:4px;}
-    h2{font-size:13px;color:#1B5E35;border-bottom:1px solid #eee;padding-bottom:6px;margin:20px 0 10px;}
-    table{width:100%;border-collapse:collapse;margin-bottom:20px;}
-    th{background:#1B5E35;color:white;padding:7px 8px;text-align:left;font-size:9px;letter-spacing:1px;}
-    td{padding:6px 8px;border-bottom:1px solid #eee;vertical-align:top;}
-    tr:nth-child(even) td{background:#f9f9f9;}
-    .footer{margin-top:20px;font-size:9px;color:#999;text-align:center;border-top:1px solid #ddd;padding-top:8px;}
-    @media print{body{margin:10px;}}
-  </style></head><body>
-  <div class="header">
-    <div>
-      <div class="company">${settings.companyName}</div>
-      <div class="report-title">Weekly Safety Inspection Summary</div>
-      <div style="font-size:10px;color:#666;margin-top:4px;">Period: ${weekStr} · Site: ${settings.siteName}</div>
-    </div>
-    <div style="text-align:right;font-size:10px;color:#666;">Printed: ${today}</div>
-  </div>
-  <div class="stats">
-    <div class="stat"><div class="stat-val">${total}</div><div class="stat-lbl">TOTAL FORMS</div></div>
-    <div class="stat"><div class="stat-val" style="color:#1B5E35;">${passing}</div><div class="stat-lbl">100% PASS</div></div>
-    <div class="stat"><div class="stat-val" style="color:${failedSubs>0?'#CC0000':'#1B5E35'};">${failedSubs}</div><div class="stat-lbl">WITH DEFECTS</div></div>
-    <div class="stat"><div class="stat-val" style="color:${defects.filter(d=>d.status==='open').length>0?'#CC0000':'#1B5E35'};">${defects.filter(d=>d.status==='open').length}</div><div class="stat-lbl">OPEN DEFECTS</div></div>
-  </div>
-  <h2>Plant Status This Week</h2>
-  <table><tr><th>ID</th><th>PLANT</th><th>LOCATION</th><th style="text-align:center">FORMS</th><th style="text-align:center">AVG SCORE</th><th style="text-align:center">OPEN DEFECTS</th></tr>
-  ${plantRows||'<tr><td colspan="6" style="text-align:center;color:#999;padding:20px;">No plant data</td></tr>'}</table>
-  ${defects.length>0?`<h2>Defects This Week</h2>
-  <table><tr><th>ID</th><th>PLANT</th><th>FORM</th><th>DEFECT</th><th>REPORTED BY</th><th>DATE</th><th>STATUS</th></tr>
-  ${defRows}</table>`:'<h2>Defects This Week</h2><p style="color:#1B5E35;font-weight:bold;">✅ No defects reported this week</p>'}
-  <div class="footer">${settings.companyName} · Weekly Safety Summary · Generated ${today}</div>
-  <script>setTimeout(()=>window.print(),600)<\/script></body></html>`);
-}
-
-
-// ============================================================
-// ADMIN PANEL — Sites & Users
-// ============================================================
-function renderAdminPanel() {
-  const session   = AUTH.getSession();
-  const canManage = ['admin','project_manager'].includes(session?.role);
-  if (!canManage) {
-    document.getElementById('admin-grid').innerHTML =
-      '<div style="color:var(--muted);padding:40px;text-align:center;">⛔ Admin or Project Manager access required.</div>';
-    return;
-  }
-  populateSiteFilter();
-  renderAdminSites();
-  renderAdminUsers();
-}
-
-function populateSiteFilter() {
-  const sel   = document.getElementById('user-site-filter');
-  if (!sel) return;
-  const sites = AUTH.getSites();
-  sel.innerHTML = '<option value="all">All Sites</option>' +
-    sites.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-}
-
-// ── SITES ──────────────────────────────────────────────────
-function renderAdminSites() {
-  const sites   = AUTH.getSites();
-  const session = AUTH.getSession();
-  const isAdmin = session?.role === 'admin';
-  const wrap    = document.getElementById('admin-sites');
-  if (!wrap) return;
-  if (!sites.length) { wrap.innerHTML = '<div style="color:var(--muted);text-align:center;padding:30px;">No sites yet.</div>'; return; }
-  wrap.innerHTML = sites.map(s => {
-    const siteUsers = AUTH.getUsersForSite(s.id).filter(u => u.active !== false);
-    const staff     = siteUsers.filter(u => u.role !== 'operator');
-    const hasOpPin  = !!s.operatorPin;
-    return `<div style="background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:16px;margin-bottom:10px;cursor:pointer;transition:border-color 0.15s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'" onclick="viewSiteUsers('${s.id}')">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
-        <div style="flex:1;">
-          <div style="font-size:14px;font-weight:700;">${s.name}</div>
-          <div style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;margin-top:3px;">📍 ${s.address||'No address'}</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
-            <span style="font-size:10px;background:rgba(46,125,82,0.1);color:var(--accent);padding:2px 8px;border-radius:8px;font-family:'Space Mono',monospace;">👤 ${staff.length} staff</span>
-            ${hasOpPin
-              ? `<span style="font-size:10px;background:rgba(46,125,82,0.1);color:var(--accent);padding:2px 8px;border-radius:8px;font-family:'Space Mono',monospace;">👷 OP PIN: <strong>${s.operatorPin}</strong></span>`
-              : `<span style="font-size:10px;background:rgba(255,71,87,0.1);color:#FF4757;padding:2px 8px;border-radius:8px;font-family:'Space Mono',monospace;">⚠️ No operator PIN set</span>`
-            }
-          </div>
-        </div>
-        <div style="display:flex;gap:6px;flex-shrink:0;" onclick="event.stopPropagation()">
-          <button class="btn btn-secondary btn-sm" title="Set operator PIN" onclick="openSetOperatorPin('${s.id}')">👷</button>
-          ${isAdmin ? `<button class="btn btn-secondary btn-sm" onclick="openEditSite('${s.id}')">✏️</button>` : ''}
-          ${isAdmin && sites.length > 1 ? `<button class="btn btn-danger btn-sm" onclick="confirmDeleteSite('${s.id}')">🗑️</button>` : ''}
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function viewSiteUsers(siteId) {
-  const site  = AUTH.getSite(siteId);
-  const users = AUTH.getUsersForSite(siteId).filter(u => u.active !== false);
-  const staff = users.filter(u => u.role !== 'operator');
-  const rows  = staff.map(u => {
-    const ri = AUTH.ROLES[u.role] || { icon:'👤', color:'#888', label:u.role };
-    return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);">
-      <span style="font-size:20px;">${ri.icon}</span>
-      <div style="flex:1;">
-        <div style="font-size:13px;font-weight:700;">${u.name}</div>
-        <div style="font-size:11px;color:${ri.color};font-family:'Space Mono',monospace;">${ri.label}</div>
-      </div>
-      <div style="font-family:'Space Mono',monospace;font-size:13px;font-weight:700;color:var(--text);letter-spacing:2px;">${u.pin}</div>
-    </div>`;
-  }).join('');
-  const opPinHtml = site.operatorPin
-    ? `<div style="background:rgba(46,125,82,0.08);border:1px solid rgba(46,125,82,0.2);border-radius:10px;padding:12px 14px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;">
-        <div><div style="font-size:12px;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:1px;">OPERATOR PIN</div>
-             <div style="font-size:20px;font-weight:700;font-family:'Space Mono',monospace;letter-spacing:3px;color:var(--accent);">${site.operatorPin}</div></div>
-        <div style="font-size:11px;color:var(--muted);">Any worker types their name<br>+ this PIN to fill forms</div>
-       </div>`
-    : `<div style="background:rgba(255,71,87,0.06);border:1px solid rgba(255,71,87,0.2);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:#FF4757;">⚠️ No operator PIN set — operators cannot log in yet. Click 👷 to set one.</div>`;
-  UI.modal(`🏗️ ${site.name}`,
-    opPinHtml +
-    `<div style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;margin-bottom:10px;letter-spacing:1px;">STAFF (${staff.length})</div>` +
-    (rows || '<div style="color:var(--muted);padding:10px 0;">No staff on this site yet.</div>'),
-    `<button class="btn btn-secondary" onclick="UI.closeModal();openSetOperatorPin('${siteId}')">👷 Set Operator PIN</button>
-     <button class="btn btn-primary" onclick="UI.closeModal()">Done</button>`
-  );
-}
-
-function openSetOperatorPin(siteId) {
-  const site = AUTH.getSite(siteId);
-  UI.modal('👷 Operator PIN — ' + site.name,
-    `<div style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6;">
-      Operators don't need an account. Any worker can log in by typing their name and this shared site PIN.
-      Keep it simple — 4 digits your crew will remember.
-    </div>
-    <div class="form-group">
-      <label class="form-label">OPERATOR PIN (4–6 digits)</label>
-      <input type="text" class="form-input" id="op-pin-val" value="${site.operatorPin||''}" placeholder="e.g. 9999" maxlength="6" inputmode="numeric" style="font-size:24px;font-family:'Space Mono',monospace;letter-spacing:4px;text-align:center;">
-    </div>
-    <div style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:8px;line-height:1.7;margin-bottom:16px;">
-      💡 Tell this PIN to all operators on ${site.name}.<br>
-      Change it anytime — old PIN stops working immediately.
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="UI.closeModal()">Cancel</button>
-      ${site.operatorPin ? `<button class="btn btn-danger" onclick="clearOperatorPin('${siteId}')">Remove PIN</button>` : ''}
-      <button class="btn btn-primary" onclick="saveOperatorPin('${siteId}')">Save PIN</button>
-    </div>`
-  );
-  setTimeout(() => { const el = document.getElementById('op-pin-val'); if(el){ el.focus(); el.select(); }}, 150);
-}
-
-function saveOperatorPin(siteId) {
-  const pin = document.getElementById('op-pin-val')?.value.trim();
-  if (!pin || !/^\d{4,6}$/.test(pin)) { UI.toast('PIN must be 4–6 digits','error'); return; }
-  AUTH.setOperatorPin(siteId, pin);
-  UI.toast('Operator PIN saved','success');
-  UI.closeModal();
-  renderAdminSites();
-}
-
-function clearOperatorPin(siteId) {
-  if (!confirm('Remove operator PIN? Operators will not be able to log in until a new PIN is set.')) return;
-  AUTH.setOperatorPin(siteId, null);
-  UI.toast('Operator PIN removed','warning');
-  UI.closeModal();
-  renderAdminSites();
-}
-
-function openAddSite() {
-  if (AUTH.getRole() !== 'admin') { UI.toast('Admin only','error'); return; }
-  UI.modal('🏗️ New Site',
-    `<div class="form-group"><label class="form-label">SITE NAME *</label>
-      <input type="text" class="form-input" id="s-name" placeholder="e.g. Cork Road Project"></div>
-    <div class="form-group"><label class="form-label">ADDRESS</label>
-      <input type="text" class="form-input" id="s-addr" placeholder="e.g. Cork, Ireland"></div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="UI.closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveSite(null)">Create Site</button>
-    </div>`
-  );
-}
-
-function openEditSite(id) {
-  const s = AUTH.getSite(id);
-  UI.modal('✏️ Edit Site',
-    `<div class="form-group"><label class="form-label">SITE NAME *</label>
-      <input type="text" class="form-input" id="s-name" value="${s.name}"></div>
-    <div class="form-group"><label class="form-label">ADDRESS</label>
-      <input type="text" class="form-input" id="s-addr" value="${s.address||''}"></div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="UI.closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveSite('${id}')">Save Changes</button>
-    </div>`
-  );
-}
-
-function saveSite(id) {
-  const name = document.getElementById('s-name')?.value.trim();
-  const addr = document.getElementById('s-addr')?.value.trim();
-  if (!name) { UI.toast('Site name required','error'); return; }
-  AUTH.saveSite({ id: id||null, name, address: addr });
-  UI.toast(id ? 'Site updated' : 'Site created', 'success');
-  UI.closeModal();
-  renderAdminSites();
-  populateSiteFilter();
-}
-
-function confirmDeleteSite(id) {
-  const s = AUTH.getSite(id);
-  const userCount = AUTH.getUsersForSite(id).length;
-  if (!confirm(`Delete "${s.name}"?\n\nThis will also remove ${userCount} user assignment(s). Plant data and submissions will remain in storage but won't be accessible. This cannot be undone.`)) return;
-  const res = AUTH.deleteSite(id);
-  if (!res.ok) { UI.toast(res.error,'error'); return; }
-  UI.toast('Site deleted','warning');
-  renderAdminSites();
-  renderAdminUsers();
-  populateSiteFilter();
-}
-
-// ── USERS ──────────────────────────────────────────────────
-function renderAdminUsers() {
-  const session  = AUTH.getSession();
-  const isAdmin  = session?.role === 'admin';
-  const isPM     = session?.role === 'project_manager';
-  const filterEl = document.getElementById('user-site-filter');
-  const filter   = filterEl?.value || 'all';
-  const myUser   = AUTH.getUser(session?.userId);
-
-  let users = AUTH.getUsers();
-
-  // PM can only see users on their own sites
-  if (isPM && !isAdmin) {
-    const mySites = myUser?.siteIds || [];
-    users = users.filter(u => (u.siteIds||[]).some(sid => mySites.includes(sid)));
-    // PM cannot see/edit admins or other PMs
-    users = users.filter(u => !['admin','project_manager'].includes(u.role) || u.id === session.userId);
-  }
-
-  if (filter !== 'all') {
-    users = users.filter(u => u.role === 'admin' || (u.siteIds||[]).includes(filter));
-  }
-
-  const wrap = document.getElementById('admin-users');
-  if (!wrap) return;
-  if (!users.length) {
-    wrap.innerHTML = '<div style="color:var(--muted);text-align:center;padding:30px;">No users found.</div>';
-    return;
-  }
-
-  const sites = AUTH.getSites();
-  wrap.innerHTML = users.map(u => {
-    const ri = AUTH.ROLES[u.role] || { icon:'👤', color:'#888', label:u.role };
-    const isMe = u.id === session?.userId;
-    const isInactive = u.active === false;
-    const siteLabels = u.role === 'admin' ? '<span style="color:var(--accent);font-size:10px;">All sites</span>' :
-      (u.siteIds||[]).map(sid => {
-        const s = sites.find(x=>x.id===sid);
-        return s ? `<span style="background:rgba(46,125,82,0.1);color:var(--accent);padding:1px 7px;border-radius:10px;font-size:10px;font-family:\'Space Mono\',monospace;">${s.name}</span>` : '';
-      }).join(' ');
-
-    const canEdit   = isAdmin || (isPM && !['admin','project_manager'].includes(u.role));
-    const canDelete = canEdit && !isMe;
-
-    return `<div style="background:var(--surface2);border:1px solid ${isInactive?'rgba(255,71,87,0.2)':isMe?'rgba(46,125,82,0.3)':'var(--border2)'};border-radius:12px;padding:14px 16px;margin-bottom:8px;opacity:${isInactive?'0.6':'1'};">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
-        <div style="flex:1;min-width:0;">
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            <span style="font-size:18px;">${ri.icon}</span>
-            <span style="font-size:14px;font-weight:700;">${u.name}</span>
-            ${isMe ? '<span style="font-size:10px;color:var(--accent);font-family:\'Space Mono\',monospace;">(you)</span>' : ''}
-            ${isInactive ? '<span style="font-size:10px;color:var(--danger);font-family:\'Space Mono\',monospace;">INACTIVE</span>' : ''}
-          </div>
-          <div style="font-size:11px;color:${ri.color};font-family:\'Space Mono\',monospace;margin-top:3px;">${ri.label}</div>
-          <div style="margin-top:5px;display:flex;gap:4px;flex-wrap:wrap;">${siteLabels}</div>
-          <div style="font-size:10px;color:var(--muted);margin-top:4px;font-family:\'Space Mono\',monospace;">PIN: <strong style="color:var(--text);letter-spacing:2px;">${u.pin}</strong> · ${u.id}</div>
-        </div>
-        ${canEdit ? `<div style="display:flex;gap:5px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;">
-          <button class="btn btn-secondary btn-sm" onclick="openEditUser('${u.id}')">✏️</button>
-          ${canDelete ? `<button class="btn btn-secondary btn-sm" onclick="toggleUserActive('${u.id}')">${isInactive?'✅':'⏸️'}</button>` : ''}
-          ${canDelete ? `<button class="btn btn-danger btn-sm" onclick="confirmDeleteUser('${u.id}')">🗑️</button>` : ''}
-        </div>` : ''}
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function openAddUser() {
-  const session = AUTH.getSession();
-  const isAdmin = session?.role === 'admin';
-  const isPM    = session?.role === 'project_manager';
-  const sites   = AUTH.getSites();
-  const myUser  = AUTH.getUser(session?.userId);
-  const mySites = myUser?.siteIds || [];
-
-  // Roles PM can create
-  const allowedRoles = isAdmin
-    ? Object.entries(AUTH.ROLES)
-    : Object.entries(AUTH.ROLES).filter(([k]) => !['admin','project_manager'].includes(k));
-
-  const siteCheckboxes = sites.map(s => {
-    const disabled = !isAdmin && !mySites.includes(s.id) ? 'disabled' : '';
-    return `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;">
-      <input type="checkbox" class="site-check" value="${s.id}" ${!isAdmin && mySites.length===1 ? 'checked' : ''} ${disabled}>
-      <span style="font-size:13px;">${s.name}</span>
-    </label>`;
-  }).join('');
-
-  UI.modal('👤 Add User',
-    `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-      <div class="form-group" style="grid-column:1/-1"><label class="form-label">FULL NAME *</label>
-        <input type="text" class="form-input" id="u-name" placeholder="e.g. John Smith"></div>
-      <div class="form-group"><label class="form-label">ROLE *</label>
-        <select class="form-input" id="u-role">
-          ${allowedRoles.map(([k,v])=>`<option value="${k}">${v.icon} ${v.label}</option>`).join('')}
-        </select></div>
-      <div class="form-group"><label class="form-label">PERSONAL PIN * (4-6 digits)</label>
-        <input type="text" class="form-input" id="u-pin" placeholder="e.g. 7291" maxlength="6" inputmode="numeric" pattern="[0-9]*"></div>
-    </div>
-    <div class="form-group"><label class="form-label">ASSIGN TO SITES</label>
-      <div style="background:var(--surface2);border-radius:10px;padding:10px 14px;">${siteCheckboxes}</div>
-    </div>
-    <div style="background:rgba(255,183,0,0.08);border:1px solid rgba(255,183,0,0.2);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:var(--muted);">
-      💡 Each person gets a unique PIN. They use it to log in — no username needed.
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="UI.closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveUser(null)">Add User</button>
-    </div>`
-  );
-}
-
-function openEditUser(id) {
-  const u       = AUTH.getUser(id);
-  const session = AUTH.getSession();
-  const isAdmin = session?.role === 'admin';
-  const sites   = AUTH.getSites();
-
-  const allowedRoles = isAdmin
-    ? Object.entries(AUTH.ROLES)
-    : Object.entries(AUTH.ROLES).filter(([k]) => !['admin','project_manager'].includes(k));
-
-  const siteCheckboxes = sites.map(s => {
-    const checked = u.role === 'admin' || (u.siteIds||[]).includes(s.id);
-    return `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;">
-      <input type="checkbox" class="site-check" value="${s.id}" ${checked?'checked':''}>
-      <span style="font-size:13px;">${s.name}</span>
-    </label>`;
-  }).join('');
-
-  UI.modal(`✏️ Edit — ${u.name}`,
-    `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-      <div class="form-group" style="grid-column:1/-1"><label class="form-label">FULL NAME *</label>
-        <input type="text" class="form-input" id="u-name" value="${u.name}"></div>
-      <div class="form-group"><label class="form-label">ROLE</label>
-        <select class="form-input" id="u-role" ${!isAdmin && ['admin','project_manager'].includes(u.role) ? 'disabled' : ''}>
-          ${allowedRoles.map(([k,v])=>`<option value="${k}" ${u.role===k?'selected':''}>${v.icon} ${v.label}</option>`).join('')}
-        </select></div>
-      <div class="form-group"><label class="form-label">CHANGE PIN (leave blank to keep)</label>
-        <input type="text" class="form-input" id="u-pin" placeholder="New PIN (4-6 digits)" maxlength="6" inputmode="numeric"></div>
-    </div>
-    <div class="form-group"><label class="form-label">SITES</label>
-      <div style="background:var(--surface2);border-radius:10px;padding:10px 14px;">${siteCheckboxes}</div>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="UI.closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveUser('${id}')">Save</button>
-    </div>`
-  );
-}
-
-function saveUser(id) {
-  const name = document.getElementById('u-name')?.value.trim();
-  const role = document.getElementById('u-role')?.value;
-  const pinRaw = document.getElementById('u-pin')?.value.trim();
-  const siteIds = [...document.querySelectorAll('.site-check:checked')].map(el=>el.value);
-
-  if (!name) { UI.toast('Name is required','error'); return; }
-  if (!role)  { UI.toast('Role is required','error'); return; }
-
-  let pin = pinRaw;
-  if (!id) {
-    // New user — PIN required
-    if (!pin) { UI.toast('PIN is required','error'); return; }
-  } else {
-    // Editing — keep existing if blank
-    if (!pin) pin = AUTH.getUser(id)?.pin;
-  }
-  if (!/^\d{4,6}$/.test(pin)) { UI.toast('PIN must be 4–6 digits','error'); return; }
-
-  const user = { id: id||null, name, role, pin, siteIds };
-  const res  = AUTH.saveUser(user);
-  if (!res.ok) { UI.toast(res.error,'error'); return; }
-
-  UI.toast(id ? 'User updated' : `${name} added`, 'success');
-  UI.closeModal();
-  renderAdminUsers();
-}
-
-function toggleUserActive(id) {
-  const u   = AUTH.getUser(id);
-  const act = u?.active !== false;
-  if (!confirm(`${act ? 'Deactivate' : 'Reactivate'} ${u?.name}? They will ${act ? 'no longer be able to log in' : 'be able to log in again'}.`)) return;
-  const res = AUTH.toggleUserActive(id);
-  if (!res.ok) { UI.toast(res.error,'error'); return; }
-  UI.toast(`${u?.name} ${res.active ? 'reactivated' : 'deactivated'}`, 'warning');
-  renderAdminUsers();
-}
-
-function confirmDeleteUser(id) {
-  const u = AUTH.getUser(id);
-  if (!confirm(`Permanently delete ${u?.name}?\n\nTheir past submissions will remain but they won't be able to log in.`)) return;
-  const res = AUTH.deleteUser(id);
-  if (!res.ok) { UI.toast(res.error,'error'); return; }
-  UI.toast(`${u?.name} deleted`,'warning');
-  renderAdminUsers();
-}
-
-// SETTINGS
-// ============================================================
-function renderSettings() {
-  const s = DB.getSettings();
-  document.getElementById('set-company').value = s.companyName || '';
-  document.getElementById('set-site').value = s.siteName || '';
-  document.getElementById('set-manager').value = s.siteManager || '';
-  document.getElementById('set-safety').value = s.safetyOfficer || '';
-  document.getElementById('set-email').value = s.notifyEmail || '';
-  document.getElementById('set-daily').value = s.dailyFormRequired || 'GA2';
-  document.getElementById('set-weekly').value = s.weeklyFormRequired || 'GA3';
-}
-
-function doHardReset() {
-  DB.hardReset();
-  AUTH.clearSession();
-  UI.toast('All data cleared — reloading...', 'warning');
-  setTimeout(() => window.location.href = 'login.html', 1500);
-}
-
-function saveSettings() {
-  const s = {
-    companyName: document.getElementById('set-company').value,
-    siteName: document.getElementById('set-site').value,
-    siteManager: document.getElementById('set-manager').value,
-    safetyOfficer: document.getElementById('set-safety').value,
-    notifyEmail: document.getElementById('set-email').value,
-    dailyFormRequired: document.getElementById('set-daily').value,
-    weeklyFormRequired: document.getElementById('set-weekly').value,
-  };
-  DB.saveSettings(s);
-  updateSidebarInfo();
-  UI.toast('Settings saved!', 'success');
-}
-
-function updateSidebarInfo() {
-  const s = DB.getSettings();
-  document.getElementById('site-name-display').textContent = s.siteName || 'Site Name';
-  document.getElementById('company-display').textContent = s.companyName || 'Company Name';
-}
-
-function exportData() {
-  const data = {
-    plants: DB.getPlants(),
-    submissions: DB.getSubmissions(),
-    settings: DB.getSettings(),
-    formTemplates: DB.getFormTemplates(),
-    exportedAt: new Date().toISOString(),
-    version: '1.0'
-  };
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `ga-forms-export-${new Date().toISOString().split('T')[0]}.json`;
-  a.click();
-  UI.toast('Data exported successfully', 'success');
-}
-
-function importDataPrompt() {
-  const input = document.createElement('input');
-  input.type = 'file'; input.accept = '.json';
-  input.onchange = e => {
-    const file = e.target.files[0];
-    const reader = new FileReader();
-    reader.onload = ev => {
-      try {
-        const data = JSON.parse(ev.target.result);
-        if (data.plants) DB.set('plants', data.plants);
-        if (data.submissions) DB.set('submissions', data.submissions);
-        if (data.settings) DB.set('settings', data.settings);
-        if (data.formTemplates) DB.set('formTemplates', data.formTemplates);
-        UI.toast('Data imported successfully! Refreshing...', 'success');
-        setTimeout(() => location.reload(), 1500);
-      } catch { UI.toast('Invalid file format', 'error'); }
+(() => {
+  "use strict";
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const TILE = 24, WORLD = 80;
+  const COLS = Math.floor(W/TILE), ROWS = Math.floor(H/TILE);
+  const DAY_MS = 120000, NIGHT_START=0.55, NIGHT_END=0.95, MAX_NIGHTS=99;
+
+  const bDay=document.getElementById('bDay'), bTime=document.getElementById('bTime'), bNights=document.getElementById('bNights'), bSigils=document.getElementById('bSigils');
+
+  // Pure new state
+  let S;
+
+  // Utility
+  const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+  const k=(x,y)=>x+','+y;
+  const rng = (seed => () => (seed = (seed*1664525+1013904223)|0, (seed>>>0)/4294967296))( (Math.random()*1e9)|0 );
+
+  function reset(){
+    S = {
+      start: performance.now(), lastTick: performance.now(), lastPhaseMark: performance.now(),
+      day:1, nights:0, paused:false, running:true, over:false, won:false,
+      p1:{x:(rng()*WORLD)|0, y:(rng()*WORLD)|0}, p2:{x:(rng()*WORLD)|0, y:(rng()*WORLD)|0},
+      inv:{wood:0,stone:0,shovel:0,frame:0,child:0,runes:0,house:0},
+      trees:new Set(), rocks:new Set(), dug:new Set(), enemies:[],
+      runes:[], chamber:null, msg:[], view:1, mini:null,
     };
-    reader.readAsText(file);
-  };
-  input.click();
-}
-
-function hardResetData() {
-  UI.modal('⚠️ Hard Reset',
-    '<p style="color:#E5E7EB;margin-bottom:16px;">This will permanently delete <strong style="color:#FF4757;">ALL site data</strong> — plants, forms, submissions, defects, notifications and settings.</p>' +
-    '<p style="color:#E5E7EB;margin-bottom:16px;">This cannot be undone. Type <strong style="color:#FF4757;">RESET</strong> below to confirm.</p>' +
-    '<input type="text" id="reset-confirm-input" class="form-input" placeholder="Type RESET here..." autocomplete="off" style="margin-top:8px;">',
-    '<button onclick="UI.closeModal()" style="' + UI.btnStyle('secondary') + '">Cancel</button>' +
-    '<button onclick="var v=document.getElementById(\'reset-confirm-input\')?.value;if(v===\'RESET\'){UI.closeModal();doHardReset();}else{UI.toast(\'Type RESET to confirm\',\'error\');}" style="' + UI.btnStyle('danger') + '">🗑️ Confirm Reset</button>'
-  );
-}
-function resetData() { hardResetData(); }
-
-// ============================================================
-// PIN MANAGEMENT
-// ============================================================
-
-function changePinFor(role, adminOverride) {
-  const newPin = document.getElementById(`pin-new-${role}`)?.value;
-  const confirmPin = document.getElementById(`pin-confirm-${role}`)?.value;
-  const oldPin = document.getElementById(`pin-old-${role}`)?.value;
-
-  if (newPin !== confirmPin) { UI.toast('New PINs do not match', 'error'); return; }
-  if (!newPin || newPin.length < 4) { UI.toast('PIN must be at least 4 digits', 'error'); return; }
-  if (!/^\d+$/.test(newPin)) { UI.toast('PIN must contain numbers only', 'error'); return; }
-
-  let result;
-  if (adminOverride) {
-    result = AUTH.adminChangePin(role, newPin);
-  } else {
-    result = AUTH.changePin(role, oldPin, newPin);
+    genWorld();
+    toast("New run: find 3 runes ★, craft a shovel, dig the chamber, rescue the child, build the house.");
   }
 
-  if (result.ok) {
-    UI.toast(`PIN updated for ${AUTH.ROLES[role].label}`, 'success');
-    DB.addNotification({ title: '🔐 PIN Changed', message: `PIN updated for ${AUTH.ROLES[role].label}`, type: 'info' });
-    renderPinManagement();
-  } else {
-    UI.toast(result.error, 'error');
-  }
-}
+  function phase(){ return ((performance.now()-S.start)%DAY_MS)/DAY_MS; }
+  function isNight(){ const p=phase(); return p>=NIGHT_START && p<=NIGHT_END; }
+  function phaseName(){ const p=phase(); if (p<0.2) return 'Dawn'; if (p<NIGHT_START) return 'Day'; if (p<=NIGHT_END) return 'Night'; return 'Dawn'; }
 
-// ============================================================
-// INIT
-// ============================================================
-document.addEventListener('DOMContentLoaded', () => {
-  // Auth guard
-  if (!checkAuth()) return;
-  initRoleBadge();
-  // Date
-  document.getElementById('current-date').textContent = new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-  
-  // Seed data
-  DB.getPlants();
-  DB.getFormTemplates();
-  
-  // Update sidebar
-  updateSidebarInfo();
-  
-  // Generate initial notifications if none
-  if (DB.getNotifications().length === 0) {
-    DB.addNotification({ title: 'System Ready', message: 'GA Forms System initialized successfully. Add plants and start inspecting!', type: 'success' });
-    DB.addNotification({ title: 'Welcome', message: 'Scan plant QR codes from the field to fill inspection forms directly on mobile.', type: 'info' });
-    const issues = DB.checkCompliance();
-    issues.slice(0, 3).forEach(i => DB.addNotification({ title: 'Compliance Alert', message: `${i.plantName}: ${i.issue}`, type: 'warning' }));
+  function genWorld(){
+    // Populate trees & rocks
+    const dens=0.12;
+    for(let x=0;x<WORLD;x++){
+      for(let y=0;y<WORLD;y++){
+        const r = rng();
+        if (r<dens*0.7) S.trees.add(k(x,y));
+        else if (r<dens) S.rocks.add(k(x,y));
+      }
+    }
+    S.trees.delete(k(S.p1.x,S.p1.y)); S.rocks.delete(k(S.p1.x,S.p1.y));
+    // Place 3 rune shrines
+    for(let i=0;i<3;i++){
+      let x,y;
+      do{ x=(rng()*WORLD)|0; y=(rng()*WORLD)|0; } while(S.trees.has(k(x,y))||S.rocks.has(k(x,y)));
+      S.runes.push({x,y,type:i,done:false});
+    }
+    // Hidden chamber
+    let cx,cy;
+    do{ cx=(rng()*WORLD)|0; cy=(rng()*WORLD)|0; } while(Math.hypot(cx-S.p1.x,cy-S.p1.y)<12);
+    S.chamber={x:cx,y:cy,open:false};
   }
-  
-  // Badges
-  updateNotifBadge();
-  const issues = DB.checkCompliance();
-  const b = document.getElementById('issues-badge');
-  if (issues.length > 0) { b.style.display = ''; b.textContent = issues.length; }
-  
-  renderDashboard();
-});
+
+  function toast(t){ S.msg.push({t,ts:performance.now()}); }
+
+  // Inputs
+  const keys={};
+  addEventListener('keydown',e=>{
+    keys[e.code]=true;
+    if (e.code==='KeyP') S.paused=!S.paused;
+    if (e.code==='KeyR') reset();
+  });
+  addEventListener('keyup',e=>keys[e.code]=false);
+
+  // Top buttons
+  document.getElementById('btnHelp').addEventListener('click',()=>{
+    alert("How to Play:\n- Day/Night every 2 minutes. Avoid outside at night.\n- Chop trees & mine rocks (E) to get wood/stone. Craft shovel to dig (F).\n- Complete 3 rune challenges at ★ to earn runes.\n- Dig to find the chamber and rescue the child (needs 3 runes).\n- Craft a House Frame and interact on clear ground to win.\nControls: P1 WASD/E/F, P2 Arrows/RightShift/RightCtrl. Pause=P, Restart=R.\nLimit: 99 nights.");
+  });
+  document.getElementById('btnRestart').addEventListener('click',reset);
+  document.getElementById('btnPause').addEventListener('click',()=>S.paused=!S.paused);
+  document.getElementById('craft').addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b||!b.dataset.craft) return;
+    if (b.dataset.craft==='shovel'){
+      if (S.inv.wood>=3 && S.inv.stone>=2){ S.inv.wood-=3; S.inv.stone-=2; S.inv.shovel++; toast("Crafted a shovel."); }
+      else toast("Need wood3 + stone2.");
+    } else if (b.dataset.craft==='frame'){
+      if (S.inv.wood>=20 && S.inv.stone>=10){ S.inv.wood-=20; S.inv.stone-=10; S.inv.frame++; toast("Crafted a house frame."); }
+      else toast("Need wood20 + stone10.");
+    }
+  });
+
+  // Interact & dig
+  function interact(p){
+    const t=k(p.x,p.y);
+    if (S.trees.has(t)){ S.trees.delete(t); S.inv.wood++; toast("+1 wood"); return; }
+    if (S.rocks.has(t)){ S.rocks.delete(t); S.inv.stone++; toast("+1 stone"); return; }
+    const shr=S.runes.find(s=>s.x===p.x&&s.y===p.y);
+    if (shr){ if (shr.done){ toast("This shrine is quiet."); } else startMini(shr); return; }
+    if (S.chamber.x===p.x && S.chamber.y===p.y){
+      if (!S.chamber.open){
+        if (S.inv.runes>=3){ S.chamber.open=true; S.inv.child=1; toast("You rescued the child! Craft and place a house frame."); }
+        else toast("A sealed chamber. You need 3 runes.");
+      }
+      return;
+    }
+    // Place house if possible
+    if (S.inv.child && S.inv.frame && !S.inv.house){
+      if (S.trees.has(t)||S.rocks.has(t)){ toast("Clear the tile first."); }
+      else { S.inv.frame--; S.inv.house=1; S.won=true; toast("You built a home. THE END ♥"); }
+    }
+  }
+  function dig(p){
+    if (!S.inv.shovel){ toast("You need a shovel to dig."); return; }
+    const t=k(p.x,p.y);
+    if (S.dug.has(t)){ toast("Already dug here."); return; }
+    S.dug.add(t);
+    if (Math.random()<0.1){ S.inv.stone++; toast("You found +1 stone while digging."); }
+    if (S.chamber.x===p.x && S.chamber.y===p.y){ toast("You uncovered an underground chamber entrance."); }
+  }
+
+  // Simple minigames — robust, no DOM, drawn on canvas
+  // 0: Tap-the-order (numbers 1..4 appear, click in order)
+  // 1: Key sequence (show a sequence like WASD, press it)
+  // 2: Timer dodge (avoid moving squares for 5s using your player)
+  function startMini(shrine){
+    if (S.mini) return;
+    if (shrine.type===0){
+      const pts=[];
+      for(let i=0;i<4;i++){ pts.push({x:(Math.random()*W)|0, y:(Math.random()*H)|0, n:i+1}); }
+      S.mini={kind:0, shrine, pts, next:1, fail:false, done:false};
+    } else if (shrine.type===1){
+      const seq=['KeyW','KeyA','KeyS','KeyD']; // fixed for simplicity
+      S.mini={kind:1, shrine, seq, idx:0, fail:false, done:false};
+    } else {
+      const obstacles=[]; for(let i=0;i<6;i++){ obstacles.push({x:(Math.random()*W)|0, y:(Math.random()*H)|0, vx:(Math.random()<0.5?-2:2), vy:(Math.random()<0.5?-2:2)}); }
+      const t0=performance.now();
+      S.mini={kind:2, shrine, obstacles, t0, dur:5000, done:false, fail:false};
+    }
+  }
+
+  canvas.addEventListener('mousedown',e=>{
+    if (!S.mini) return;
+    const r=canvas.getBoundingClientRect(), mx=e.clientX-r.left, my=e.clientY-r.top;
+    if (S.mini.kind===0){
+      const hit=S.mini.pts.find(p=>Math.hypot(mx-p.x,my-p.y)<18 && p.n===S.mini.next);
+      if (hit){ S.mini.next++; }
+      else { S.mini.fail=true; }
+      if (S.mini.next>4){ S.mini.done=true; }
+    }
+  });
+  addEventListener('keydown',e=>{
+    if (!S.mini) return;
+    if (S.mini.kind===1){
+      if (e.code===S.mini.seq[S.mini.idx]) S.mini.idx++;
+      else S.mini.fail=true;
+      if (S.mini.idx>=S.mini.seq.length) S.mini.done=true;
+    }
+  });
+
+  function resolveMini(){
+    if (!S.mini) return;
+    const M=S.mini;
+    if (M.done && !M.fail){ M.shrine.done=true; S.inv.runes++; toast("Rune gained! ("+S.inv.runes+"/3)"); S.mini=null; }
+    else if (M.fail){ toast("Challenge failed. Try again later."); S.mini=null; }
+  }
+
+  // Movement & update
+  function update(dt){
+    if (!S.running || S.paused) return;
+
+    // Day/Night bookkeeping
+    const prev=((S.lastPhaseMark-S.start)%DAY_MS)/DAY_MS;
+    const cur=((performance.now()-S.start)%DAY_MS)/DAY_MS;
+    const nightNow = cur>=NIGHT_START && cur<=NIGHT_END;
+    const nightBefore = prev>=NIGHT_START && prev<=NIGHT_END;
+    if (!nightBefore && nightNow){ S.nights++; if (S.nights>MAX_NIGHTS){ S.over=true; S.running=false; } }
+    if (prev<=NIGHT_END && cur>NIGHT_END){ S.day++; }
+    S.lastPhaseMark=performance.now();
+
+    // Player motion
+    const p1=S.p1, p2=S.p2;
+    if (keys['KeyW']) p1.y=clamp(p1.y-1,0,WORLD-1);
+    if (keys['KeyS']) p1.y=clamp(p1.y+1,0,WORLD-1);
+    if (keys['KeyA']) p1.x=clamp(p1.x-1,0,WORLD-1);
+    if (keys['KeyD']) p1.x=clamp(p1.x+1,0,WORLD-1);
+    if (keys['ArrowUp']) p2.y=clamp(p2.y-1,0,WORLD-1);
+    if (keys['ArrowDown']) p2.y=clamp(p2.y+1,0,WORLD-1);
+    if (keys['ArrowLeft']) p2.x=clamp(p2.x-1,0,WORLD-1);
+    if (keys['ArrowRight']) p2.x=clamp(p2.x+1,0,WORLD-1);
+
+    if (keys['KeyE']){ interact(p1); keys['KeyE']=false; }
+    if (keys['ShiftRight']){ interact(p2); keys['ShiftRight']=false; }
+    if (keys['KeyF']){ dig(p1); keys['KeyF']=false; }
+    if (keys['ControlRight']){ dig(p2); keys['ControlRight']=false; }
+
+    // Enemies only at night
+    if (isNight()){
+      if (S.enemies.length<8 && Math.random()<0.03){ S.enemies.push({x:(Math.random()*WORLD)|0,y:(Math.random()*WORLD)|0}); }
+      for(const e of S.enemies){
+        const target = (Math.hypot(e.x-p1.x,e.y-p1.y) < Math.hypot(e.x-p2.x,e.y-p2.y)) ? p1 : p2;
+        e.x += Math.sign(target.x-e.x)*(Math.random()<0.7?1:0);
+        e.y += Math.sign(target.y-e.y)*(Math.random()<0.7?1:0);
+        e.x=clamp(e.x,0,WORLD-1); e.y=clamp(e.y,0,WORLD-1);
+        if (!S.over && ( (e.x===p1.x&&e.y===p1.y) || (e.x===p2.x&&e.y===p2.y) )){ S.over=true; S.running=false; S.endMsg="You were slain by a night creature."; }
+      }
+    } else if (S.enemies.length && Math.random()<0.05){ S.enemies.pop(); }
+
+    // Minigame kind 2 (dodge)
+    if (S.mini && S.mini.kind===2){
+      const M=S.mini;
+      for(const o of M.obstacles){
+        o.x+=o.vx; o.y+=o.vy;
+        if (o.x<10||o.x>W-10) o.vx*=-1;
+        if (o.y<80||o.y>H-10) o.vy*=-1;
+        // collide with follow player (p1)
+        const gx=(S.p1.x - camX())*TILE + TILE/2;
+        const gy=(S.p1.y - camY())*TILE + TILE/2;
+        if (Math.hypot(gx-o.x, gy-o.y)<18) M.fail=true;
+      }
+      if (performance.now()-M.t0 > M.dur) M.done=true;
+    }
+
+    // UI badges
+    bDay.textContent = "Day "+S.day;
+    bTime.textContent = phaseName();
+    bNights.textContent = "Nights left: "+Math.max(0, MAX_NIGHTS-S.nights);
+    bSigils.textContent = "Runes: "+S.inv.runes+"/3";
+  }
+
+  function camX(){ const f=S.view===1?S.p1:S.p2; return clamp(f.x - Math.floor(COLS/2),0,Math.max(0,WORLD-COLS)); }
+  function camY(){ const f=S.view===1?S.p1:S.p2; return clamp(f.y - Math.floor(ROWS/2),0,Math.max(0,WORLD-ROWS)); }
+
+  canvas.addEventListener('contextmenu',e=>{ e.preventDefault(); S.view = (S.view===1?2:1); });
+
+  function draw(){
+    const cX=camX(), cY=camY();
+    const night=isNight();
+    ctx.fillStyle = night ? '#02030a' : '#0b3315';
+    ctx.fillRect(0,0,W,H);
+
+    // World tiles
+    for(let gx=0;gx<COLS;gx++){
+      for(let gy=0;gy<ROWS;gy++){
+        const wx=cX+gx, wy=cY+gy, x=gx*TILE, y=gy*TILE;
+        const t=k(wx,wy);
+        ctx.fillStyle = night ? '#0a1f0e' : '#184b22';
+        ctx.fillRect(x,y,TILE,TILE);
+        if (S.dug.has(t)){ ctx.fillStyle='#3a2f25'; ctx.fillRect(x,y,TILE,TILE); }
+        if (S.trees.has(t)){ ctx.fillStyle='#14532d'; ctx.fillRect(x+4,y+4,TILE-8,TILE-8); }
+        if (S.rocks.has(t)){ ctx.fillStyle='#64748b'; ctx.fillRect(x+6,y+6,TILE-12,TILE-12); }
+        const shrine=S.runes.find(s=>s.x===wx&&s.y===wy);
+        if (shrine){ ctx.fillStyle= shrine.done ? '#22c55e' : '#fbbf24'; ctx.fillRect(x+3,y+3,TILE-6,TILE-6); ctx.fillStyle='#111827'; ctx.fillText('★', x+7, y+18); }
+        if (S.chamber.x===wx && S.chamber.y===wy){ ctx.strokeStyle='#a78bfa'; ctx.strokeRect(x+2,y+2,TILE-4,TILE-4); ctx.fillStyle='#c4b5fd'; ctx.fillText('⛓', x+6, y+18); }
+      }
+    }
+
+    // Enemies
+    for(const e of S.enemies){
+      const gx=e.x-cX, gy=e.y-cY;
+      if (gx>=0&&gy>=0&&gx<COLS&&gy<ROWS){ ctx.fillStyle='#ef4444'; ctx.fillRect(gx*TILE+4, gy*TILE+4, TILE-8, TILE-8); }
+    }
+
+    // Players
+    const drawP=(p,color)=>{ const gx=p.x-cX, gy=p.y-cY; ctx.fillStyle=color; ctx.fillRect(gx*TILE+3, gy*TILE+3, TILE-6, TILE-6); };
+    drawP(S.p1, '#93c5fd'); drawP(S.p2, '#fda4af');
+
+    // Messages
+    let y=H-6;
+    for (let i=S.msg.length-1;i>=0;i--){
+      const m=S.msg[i], age=performance.now()-m.ts;
+      if (age>4000){ S.msg.splice(i,1); continue; }
+      ctx.fillStyle='rgba(0,0,0,.45)'; ctx.fillRect(8,y-18, W-16, 18);
+      ctx.fillStyle='#e5e7eb'; ctx.fillText(m.t, 16, y-4);
+      y-=20;
+    }
+
+    // Minigame drawings
+    if (S.mini){
+      ctx.fillStyle='rgba(0,0,0,.5)'; ctx.fillRect(0,0,W,H);
+      ctx.fillStyle='#e5e7eb'; ctx.font='16px system-ui,Segoe UI,Roboto,Arial';
+      if (S.mini.kind===0){
+        ctx.fillText('Click the numbers in order: 1 → 4', 20, 40);
+        for(const p of S.mini.pts){
+          ctx.beginPath(); ctx.arc(p.x,p.y,18,0,Math.PI*2); ctx.fillStyle='#60a5fa'; ctx.fill();
+          ctx.fillStyle='#0b0d14'; ctx.fillText(String(p.n), p.x-4, p.y+5);
+        }
+        if (S.mini.done || S.mini.fail) resolveMini();
+      } else if (S.mini.kind===1){
+        ctx.fillText('Press the sequence: W A S D', 20, 40);
+        ctx.fillText('Progress: '+S.mini.idx+'/4', 20, 60);
+        if (S.mini.done || S.mini.fail) resolveMini();
+      } else if (S.mini.kind===2){
+        ctx.fillText('Dodge the squares for 5 seconds (move Player 1)', 20, 40);
+        for(const o of S.mini.obstacles){ ctx.fillStyle='#f59e0b'; ctx.fillRect(o.x-10,o.y-10,20,20); }
+        ctx.fillText('Time: '+ Math.max(0, ((S.mini.dur - (performance.now()-S.mini.t0))/1000)|0 )+'s', 20, 60);
+        if (S.mini.done || S.mini.fail) resolveMini();
+      }
+    }
+
+    // Win/Lose
+    if (S.won){
+      ctx.fillStyle='rgba(0,0,0,.7)'; ctx.fillRect(0,0,W,H);
+      ctx.fillStyle='#fff7ed'; ctx.font='bold 64px system-ui,Segoe UI,Roboto,Arial';
+      const m=ctx.measureText('THE END'); ctx.fillText('THE END', (W-m.width)/2, H/2);
+      ctx.font='18px system-ui,Segoe UI,Roboto,Arial'; const t='Press R to Restart'; const m2=ctx.measureText(t); ctx.fillText(t,(W-m2.width)/2, H/2+38);
+    }
+    if (S.over && !S.won){
+      ctx.fillStyle='rgba(0,0,0,.75)'; ctx.fillRect(0,0,W,H);
+      ctx.fillStyle='#ef4444'; ctx.font='bold 58px system-ui,Segoe UI,Roboto,Arial';
+      const o='GAME OVER'; let m=ctx.measureText(o); ctx.fillText(o,(W-m.width)/2, H/2-16);
+      ctx.fillStyle='#e5e7eb'; ctx.font='18px system-ui,Segoe UI,Roboto,Arial';
+      const t=(S.endMsg||''); m=ctx.measureText(t); ctx.fillText(t,(W-m.width)/2, H/2+12);
+      const hint='Press R to Restart'; m=ctx.measureText(hint); ctx.fillText(hint,(W-m.width)/2, H/2+36);
+    }
+
+    if (night){ ctx.fillStyle='rgba(0,0,0,.35)'; ctx.fillRect(0,0,W,H); }
+  }
+
+  let last=performance.now();
+  function loop(ts){
+    const dt=ts-last; last=ts;
+    if (!S.paused) update(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  reset();
+  requestAnimationFrame(loop);
+})();
 </script>
 </body>
 </html>
