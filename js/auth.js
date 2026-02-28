@@ -82,6 +82,16 @@ const AUTH = {
     return (u && u.length) ? u : [];
   },
   getUser(id) { return this.getUsers().find(u => u.id === id) || null; },
+  // Find which site a plant belongs to by checking each site's localStorage
+  getSiteForPlant(plantId) {
+    const sites = this.getSites();
+    for (const site of sites) {
+      const plants = JSON.parse(localStorage.getItem(site.id + ':plants') || '[]');
+      if (plants.some(p => p.id === plantId)) return site;
+    }
+    return null;
+  },
+
   getUsersForSite(siteId) {
     return this.getUsers().filter(u =>
       u.role === 'admin' || (u.siteIds||[]).includes(siteId)
