@@ -9,6 +9,8 @@
 <script src="js/data.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/firebase.js"></script>
 <style>
   :root {
     --bg: #060A14;
@@ -569,7 +571,7 @@ function updateProgress() {
 // ============================================================
 // SUBMIT
 // ============================================================
-function submitForm() {
+async function submitForm() {
   const name = document.getElementById('op-name').value.trim();
   const company = document.getElementById('op-company').value.trim();
   const notes = document.getElementById('op-notes').value.trim();
@@ -586,8 +588,9 @@ function submitForm() {
     if (!confirm(unanswered + ' item(s) are unanswered. Submit anyway?')) return;
   }
 
-  
-  // Safe fallback for signature
+  const btnSubmit = document.getElementById('btn-submit');
+  if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.textContent = 'Submitting…'; }
+
   const safeSignature = (typeof sigData !== 'undefined') ? sigData : null;
   const sub = DB.addSubmission({
     plantId: state.plantId,
@@ -602,48 +605,63 @@ function submitForm() {
     passed: passed,
     failed: failed,
     signature: safeSignature,
+    plantName: state.plant?.name || state.plantId,
+    plantLocation: state.plant?.location || '',
   });
-  
-  // Auto-log each FAIL as a defect in the defect tracker
+
+  // Auto-log each FAIL as a defect
+  const defects = [];
   if (failed > 0) {
     const template = DB.getFormTemplate(state.formId);
     let idx = 0;
     (template?.sections || []).forEach(sec => {
       sec.items.forEach(item => {
         if (state.answers[idx] === 2) {
-          DB.addDefect({
+          const def = DB.addDefect({
             plantId: state.plantId,
+            plantName: state.plant?.name || state.plantId,
             formId:  state.formId,
             operatorName: name,
             item:    item,
             section: sec.title,
           });
+          defects.push(def);
         }
         idx++;
       });
     });
   }
 
-  // Add notification
-  if (failed > 0) {
-    DB.addNotification({
-      title: `⚠️ Defects Found — ${state.plant.name}`,
-      message: `${name} reported ${failed} failed item(s) on ${state.formId}. Logged to Defect Tracker.`,
-      type: 'warning',
-      plantId: state.plantId,
-      link: 'defects'
-    });
-  } else {
-    DB.addNotification({
-      title: `✅ ${state.formId} Completed — ${state.plant.name}`,
-      message: `${name} completed inspection with ${score}% score.`,
-      type: 'success',
-      plantId: state.plantId,
-      link: 'submissions'
-    });
+  // Notification
+  const notif = {
+    title: failed > 0 ? `⚠️ Defects Found — ${state.plant.name}` : `✅ ${state.formId} Completed — ${state.plant.name}`,
+    message: failed > 0
+      ? `${name} reported ${failed} failed item(s) on ${state.formId}. Logged to Defect Tracker.`
+      : `${name} completed inspection with ${score}% score.`,
+    type: failed > 0 ? 'warning' : 'success',
+    plantId: state.plantId,
+    link: failed > 0 ? 'defects' : 'submissions'
+  };
+  DB.addNotification(notif);
+
+  // Push to Firebase so admin sees it on their device
+  if (typeof FIREBASE_URL !== 'undefined' && FIREBASE_URL) {
+    const siteId = AUTH.getSiteId();
+    if (siteId) {
+      FBSYNC.init(FIREBASE_URL, siteId);
+      try {
+        await Promise.all([
+          FBSYNC.writeSubmission(sub),
+          FBSYNC.writeNotification({ ...notif, id: 'N-' + Date.now(), createdAt: sub.submittedAt, read: false }),
+          ...defects.map(d => FBSYNC.writeDefect(d))
+        ]);
+      } catch(e) {
+        console.warn('Firebase write failed — saved locally only', e);
+      }
+    }
   }
-  
-  // Show success
+
+    // Show success
   const color = score === 100 ? '#00C896' : score >= 90 ? '#FF6B35' : '#FF4757';
   const icon = score === 100 ? '🎉' : score >= 90 ? '⚠️' : '🚨';
   document.getElementById('success-icon').textContent = icon;
@@ -748,10 +766,14 @@ function logout() {
 document.addEventListener('DOMContentLoaded', () => {
   // Auth guard - operators and above can fill forms
   if (!AUTH.isLoggedIn()) {
-    // Preserve the full URL so login can redirect back with plant param intact
     const returnUrl = encodeURIComponent(window.location.href);
     window.location.href = 'login.html?return=' + returnUrl;
     return;
+  }
+  // Init Firebase sync
+  const siteId = AUTH.getSiteId();
+  if (typeof FIREBASE_URL !== 'undefined' && FIREBASE_URL && siteId) {
+    FBSYNC.init(FIREBASE_URL, siteId);
   }
   // Pre-fill operator name from session
   const session = AUTH.getSession();

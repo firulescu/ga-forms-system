@@ -11,6 +11,8 @@
 <script src="js/auth.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/qr.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/firebase.js"></script>
 <style>
   :root {
     --bg: #060A14;
@@ -525,6 +527,7 @@
       <div class="page" id="page-notifications">
         <div style="display:flex;justify-content:space-between;margin-bottom:24px;">
           <div style="font-size:13px;color:var(--muted);">System alerts and compliance notifications</div>
+          <button class="btn btn-secondary btn-sm" onclick="syncFromCloud()" id="btn-sync" title="Pull latest from cloud">🔄 Sync</button>
           <button class="btn btn-secondary btn-sm" onclick="markAllRead()">Mark all read</button>
         </div>
         <div class="card">
@@ -557,6 +560,11 @@
               <div class="form-group">
                 <label class="form-label">NOTIFICATION EMAIL</label>
                 <input type="email" class="form-input" id="set-email" placeholder="safety@company.com">
+              </div>
+              <div class="form-group">
+                <label class="form-label">☁️ FIREBASE DATABASE URL <span style="color:var(--accent);font-size:10px;">REQUIRED FOR CROSS-DEVICE SYNC</span></label>
+                <input type="text" class="form-input" id="set-firebase" placeholder="https://your-project-default-rtdb.firebaseio.com">
+                <div style="font-size:11px;color:var(--muted);margin-top:4px;">Get this from Firebase Console → Realtime Database. Free tier works fine.</div>
               </div>
               <button class="btn btn-primary" onclick="saveSettings()">💾 Save Settings</button>
             </div>
@@ -1695,6 +1703,30 @@ function markAllRead() {
   UI.toast('All notifications marked as read', 'success');
 }
 
+async function syncFromCloud() {
+  const btn = document.getElementById('btn-sync');
+  if (btn) { btn.textContent = '🔄 Syncing…'; btn.disabled = true; }
+  const siteId = AUTH.getSiteId();
+  if (!siteId || typeof FIREBASE_URL === 'undefined' || !FIREBASE_URL) {
+    UI.toast('Firebase not configured', 'error');
+    if (btn) { btn.textContent = '🔄 Sync'; btn.disabled = false; }
+    return;
+  }
+  FBSYNC.init(FIREBASE_URL, siteId);
+  const result = await FBSYNC.pullAll();
+  if (result.ok) {
+    const added = (result.submissions || 0) + (result.defects || 0) + (result.notifications || 0);
+    UI.toast(added > 0 ? `Synced — ${result.submissions || 0} new submission(s)` : 'Already up to date', 'success');
+    updateNotifBadge();
+    // Re-render current page
+    const active = document.querySelector('.nav-link.active')?.dataset?.page;
+    if (active) showPage(active);
+  } else {
+    UI.toast('Sync failed — check connection', 'error');
+  }
+  if (btn) { btn.textContent = '🔄 Sync'; btn.disabled = false; }
+}
+
 function updateNotifBadge() {
   const count = DB.getUnreadCount();
   const b = document.getElementById('notif-badge');
@@ -2346,6 +2378,8 @@ function renderSettings() {
   document.getElementById('set-email').value = s.notifyEmail || '';
   document.getElementById('set-daily').value = s.dailyFormRequired || 'GA2';
   document.getElementById('set-weekly').value = s.weeklyFormRequired || 'GA3';
+  const fbEl = document.getElementById('set-firebase');
+  if (fbEl) fbEl.value = localStorage.getItem('ga_firebase_url') || (typeof FIREBASE_URL !== 'undefined' ? FIREBASE_URL : '') || '';
 }
 
 function doHardReset() {
@@ -2366,6 +2400,12 @@ function saveSettings() {
     weeklyFormRequired: document.getElementById('set-weekly').value,
   };
   DB.saveSettings(s);
+  // Save Firebase URL to localStorage so it overrides the config file
+  const fbEl = document.getElementById('set-firebase');
+  if (fbEl && fbEl.value.trim()) {
+    localStorage.setItem('ga_firebase_url', fbEl.value.trim());
+    FBSYNC.init(fbEl.value.trim(), AUTH.getSiteId());
+  }
   updateSidebarInfo();
   UI.toast('Settings saved!', 'success');
 }
@@ -2458,7 +2498,7 @@ function changePinFor(role, adminOverride) {
 // ============================================================
 // INIT
 // ============================================================
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   // Auth guard
   if (!checkAuth()) return;
   initRoleBadge();
@@ -2486,6 +2526,19 @@ document.addEventListener('DOMContentLoaded', () => {
   const b = document.getElementById('issues-badge');
   if (issues.length > 0) { b.style.display = ''; b.textContent = issues.length; }
   
+  // Firebase sync — pull operator submissions from cloud
+  const siteId = AUTH.getSiteId();
+  if (typeof FIREBASE_URL !== 'undefined' && FIREBASE_URL && siteId) {
+    FBSYNC.init(FIREBASE_URL, siteId);
+    const result = await FBSYNC.pullAll();
+    if (result.ok && (result.submissions > 0 || result.defects > 0)) {
+      updateNotifBadge();
+      const ib = document.getElementById('issues-badge');
+      const ci = DB.checkCompliance();
+      if (ci.length > 0) { ib.style.display = ''; ib.textContent = ci.length; }
+    }
+  }
+
   renderDashboard();
 });
 </script>
