@@ -1,6 +1,6 @@
 // ============================================================
-// GA FORMS SYSTEM - Auth Layer v3
-// Personal PIN auth, multi-site, user management
+// GA FORMS SYSTEM - Auth Layer v4
+// Multi-site, personal PIN + shared operator PIN
 // Robert Quinn Ltd © 2026
 // ============================================================
 
@@ -16,7 +16,7 @@ const AUTH = {
     safety_officer:  { label: 'Safety Officer',  color: '#3a9e68', icon: '🛡️', level: 2,
                        desc: 'Compliance, defects, lifting register' },
     operator:        { label: 'Operator',        color: '#6B7A99', icon: '👷', level: 1,
-                       desc: 'Fill inspection forms only' },
+                       desc: 'Fill inspection forms — name entered at login, no account needed' },
   },
 
   PERMISSIONS: {
@@ -30,24 +30,21 @@ const AUTH = {
   // ── SITES ────────────────────────────────────────────────────
   getSites() {
     const s = DB.get('sites');
-    return (s && s.length) ? s : this._seedSites();
-  },
-  _seedSites() {
-    const sites = [{
-      id: 'SITE-001', name: 'Dublin — Main Construction Site',
-      address: 'Dublin, Ireland', active: true,
-      createdAt: new Date().toISOString(),
-    }];
-    DB.set('sites', sites);
-    return sites;
+    return (s && s.length) ? s : [];
   },
   getSite(id) { return this.getSites().find(s => s.id === id) || null; },
   saveSite(site) {
     const sites = this.getSites();
     const i = sites.findIndex(s => s.id === site.id);
-    if (i >= 0) { sites[i] = { ...sites[i], ...site }; }
-    else {
-      site.id = 'SITE-' + String(sites.length + 1).padStart(3,'0');
+    if (i >= 0) {
+      sites[i] = { ...sites[i], ...site };
+    } else {
+      // Generate unique ID
+      const maxNum = sites.reduce((max, s) => {
+        const n = parseInt((s.id||'').replace('SITE-','')) || 0;
+        return n > max ? n : max;
+      }, 0);
+      site.id = 'SITE-' + String(maxNum + 1).padStart(3,'0');
       site.createdAt = new Date().toISOString();
       site.active = true;
       sites.push(site);
@@ -58,6 +55,7 @@ const AUTH = {
   deleteSite(id) {
     if (this.getSites().length <= 1) return { ok: false, error: 'Cannot delete the only site' };
     DB.set('sites', this.getSites().filter(s => s.id !== id));
+    // Remove site from users
     const users = this.getUsers().map(u => ({
       ...u, siteIds: (u.siteIds||[]).filter(sid => sid !== id)
     }));
@@ -65,23 +63,23 @@ const AUTH = {
     return { ok: true };
   },
 
+  // ── OPERATOR PIN (shared per site, no account needed) ────────
+  // Stored on the site object itself: site.operatorPin
+  getOperatorPin(siteId) {
+    return this.getSite(siteId)?.operatorPin || null;
+  },
+  setOperatorPin(siteId, pin) {
+    const site = this.getSite(siteId);
+    if (!site) return { ok: false, error: 'Site not found' };
+    site.operatorPin = pin || null;
+    this.saveSite(site);
+    return { ok: true };
+  },
+
   // ── USERS ────────────────────────────────────────────────────
   getUsers() {
     const u = DB.get('users');
-    return (u && u.length) ? u : this._seedUsers();
-  },
-  _seedUsers() {
-    const now = new Date().toISOString();
-    const users = [
-      { id:'USR-001', name:'Marian Firulescu',  role:'admin',           pin:'0000', siteIds:['SITE-001'], active:true, createdAt:now },
-      { id:'USR-002', name:'Robert Quinn',       role:'project_manager', pin:'4444', siteIds:['SITE-001'], active:true, createdAt:now },
-      { id:'USR-003', name:'John Murphy',        role:'site_manager',    pin:'1111', siteIds:['SITE-001'], active:true, createdAt:now },
-      { id:'USR-004', name:'Sean Doyle',         role:'safety_officer',  pin:'2222', siteIds:['SITE-001'], active:true, createdAt:now },
-      { id:'USR-005', name:'Pat O\'Brien',       role:'operator',        pin:'3333', siteIds:['SITE-001'], active:true, createdAt:now },
-      { id:'USR-006', name:'Tom Walsh',          role:'operator',        pin:'5678', siteIds:['SITE-001'], active:true, createdAt:now },
-    ];
-    DB.set('users', users);
-    return users;
+    return (u && u.length) ? u : [];
   },
   getUser(id) { return this.getUsers().find(u => u.id === id) || null; },
   getUsersForSite(siteId) {
@@ -89,21 +87,34 @@ const AUTH = {
       u.role === 'admin' || (u.siteIds||[]).includes(siteId)
     );
   },
+  // Named users (non-operator staff) for a site
+  getStaffForSite(siteId) {
+    return this.getUsersForSite(siteId).filter(u => u.role !== 'operator' || u.id);
+  },
+  // Find named user by PIN on a site
   findUserByPin(pin, siteId) {
     return this.getUsers().find(u =>
       u.pin === pin &&
       u.active !== false &&
+      u.role !== 'operator' &&  // operators use shared PIN + name
       (u.role === 'admin' || (u.siteIds||[]).includes(siteId))
     ) || null;
   },
+  // Check if PIN matches the site's operator PIN
+  isOperatorPin(pin, siteId) {
+    const opPin = this.getOperatorPin(siteId);
+    return opPin && opPin === pin;
+  },
   isPinTaken(pin, excludeId) {
-    return this.getUsers().some(u => u.pin === pin && u.id !== excludeId && u.active !== false);
+    // Only check named (non-operator) users
+    return this.getUsers().some(u =>
+      u.pin === pin && u.id !== excludeId && u.active !== false && u.role !== 'operator'
+    );
   },
   saveUser(user) {
     const users = this.getUsers();
     const i = users.findIndex(u => u.id === user.id);
     if (i >= 0) {
-      // Editing existing — check PIN not taken by someone else
       if (this.isPinTaken(user.pin, user.id)) {
         const conflict = users.find(u => u.pin === user.pin && u.id !== user.id);
         return { ok: false, error: `PIN ${user.pin} already used by ${conflict.name}` };
@@ -144,14 +155,28 @@ const AUTH = {
     try { const s = sessionStorage.getItem('ga_session'); return s ? JSON.parse(s) : null; }
     catch { return null; }
   },
+  // Named user session
   setSession(user, siteId) {
     const s = { userId:user.id, name:user.name, role:user.role,
                 siteId, loginAt:new Date().toISOString() };
     try { sessionStorage.setItem('ga_session', JSON.stringify(s)); } catch {}
+    // Remember last site
+    try { localStorage.setItem('ga_last_site', siteId); } catch {}
+    return s;
+  },
+  // Anonymous operator session (name typed at login, no user account)
+  setOperatorSession(name, siteId) {
+    const s = { userId: null, name, role: 'operator',
+                siteId, loginAt: new Date().toISOString(), anonymous: true };
+    try { sessionStorage.setItem('ga_session', JSON.stringify(s)); } catch {}
+    try { localStorage.setItem('ga_last_site', siteId); } catch {}
     return s;
   },
   clearSession() {
     try { sessionStorage.removeItem('ga_session'); } catch {}
+  },
+  getLastSiteId() {
+    try { return localStorage.getItem('ga_last_site'); } catch { return null; }
   },
   isLoggedIn()  { return !!this.getSession(); },
   getRole()     { return this.getSession()?.role || null; },

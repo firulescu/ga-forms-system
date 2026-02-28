@@ -35,13 +35,17 @@ const DB = {
       { id:'PLT-005', name:'Excavator EX-05',      location:'South Compound',        type:'Excavator',       formType:'GA2-EXC',   lastInspected:null, photo:'🔵' },
       { id:'PLT-006', name:'Scissor Lift SL-02',   location:'Yard',                  type:'MEWP',            formType:'GA2-MEWP',  lastInspected:null, photo:'🔼' },
     ];
-    this.set('plants', plants);
+    this.sset('plants', plants);
     return plants;
   },
   getPlant(id) { return this.getPlants().find(p => p.id === id); },
   addPlant(plant) {
     const plants = this.getPlants();
-    plant.id = 'PLT-' + String(plants.length + 1).padStart(3,'0');
+    const maxNum = plants.reduce((max, p) => {
+      const n = parseInt((p.id||'').replace('PLT-','')) || 0;
+      return n > max ? n : max;
+    }, 0);
+    plant.id = 'PLT-' + String(maxNum + 1).padStart(3,'0');
     plant.lastInspected = null;
     plants.push(plant);
     this._savePlants(plants);
@@ -140,7 +144,8 @@ const DB = {
     this._saveGA1(records);
     return record;
   },
-  deleteGA1(plantId) { this.set('ga1_records', this.getGA1Records().filter(r => r.plantId !== plantId)); },
+  _saveGA1(r) { this.set('ga1_records', r); },
+  deleteGA1(plantId) { this._saveGA1(this.getGA1Records().filter(r => r.plantId !== plantId)); },
   getGA1DueAlerts() {
     const today = new Date();
     return this.getGA1Records().filter(r => r.nextInspectionDue).map(r => {
@@ -815,10 +820,11 @@ const DB = {
     const today = new Date().toDateString();
     const issues = [];
     plants.forEach(plant => {
+      const dailyFormId  = plant.formType || 'GA2';
       const weeklyDone = weekSubs.some(s => s.plantId === plant.id && s.formId === 'GA3');
-      const dailyDone  = weekSubs.some(s => s.plantId === plant.id && s.formId === 'GA2' && new Date(s.submittedAt).toDateString() === today);
-      if (!weeklyDone) issues.push({ plantId:plant.id, plantName:plant.name, issue:'GA3 not completed this week', severity:'warning' });
-      if (!dailyDone)  issues.push({ plantId:plant.id, plantName:plant.name, issue:'GA2 not completed today',    severity:'info' });
+      const dailyDone  = weekSubs.some(s => s.plantId === plant.id && s.formId === dailyFormId && new Date(s.submittedAt).toDateString() === today);
+      if (!weeklyDone) issues.push({ plantId:plant.id, plantName:plant.name, issue:'GA3 hazard assessment not completed this week', severity:'warning' });
+      if (!dailyDone)  issues.push({ plantId:plant.id, plantName:plant.name, issue:\`\${dailyFormId} pre-start not completed today\`, severity:'info' });
     });
     this.getGA1DueAlerts().forEach(a => {
       issues.push({ plantId:a.plantId, plantName:a.plantName, issue:`GA1: ${a.message}`, severity:a.severity });
@@ -834,7 +840,7 @@ const DB = {
   },
 
   // ============================================================
-  // HARD RESET — clears all data and reseeds (dev/testing)
+  // HARD RESET — clears all site data and form templates
   // ============================================================
   hardReset() {
     const sid = (typeof AUTH !== 'undefined') ? AUTH.getSiteId() : null;

@@ -271,7 +271,7 @@
       <input type="text" class="form-input" id="op-name" placeholder="John Smith" autocomplete="name">
     </div>
     <div class="form-group">
-      <label class="form-label">COMPANY *</label>
+      <label class="form-label">COMPANY</label>
       <input type="text" class="form-input" id="op-company" placeholder="Your company name" autocomplete="organization">
     </div>
     <div class="form-group">
@@ -336,6 +336,7 @@
 
 <script>
 // State
+let sigData = null; // signature pad data (optional)
 let state = {
   plantId: null,
   formId: null,
@@ -465,7 +466,7 @@ function startChecklist() {
   const name = document.getElementById('op-name').value.trim();
   const company = document.getElementById('op-company').value.trim();
   if (!name) { UI.toast('Please enter your name', 'error'); return; }
-  if (!company) { UI.toast('Please enter your company', 'error'); return; }
+  // company is optional
   
   // Init answers
   const totalItems = state.template.sections.reduce((sum, s) => sum + s.items.length, 0);
@@ -586,6 +587,8 @@ function submitForm() {
   }
 
   
+  // Safe fallback for signature
+  const safeSignature = (typeof sigData !== 'undefined') ? sigData : null;
   const sub = DB.addSubmission({
     plantId: state.plantId,
     formId: state.formId,
@@ -598,7 +601,7 @@ function submitForm() {
     total: total,
     passed: passed,
     failed: failed,
-    signature: sigData,
+    signature: safeSignature,
   });
   
   // Auto-log each FAIL as a defect in the defect tracker
@@ -749,14 +752,22 @@ document.addEventListener('DOMContentLoaded', () => {
   // Pre-fill operator name from session
   const session = AUTH.getSession();
   if (session) {
-    document.getElementById('op-name').value = session.name || '';
+    // Pre-fill name from session
+    const nameEl = document.getElementById('op-name');
+    if (nameEl && session.name) nameEl.value = session.name;
+    // Pre-fill company from site settings
+    const site = AUTH.getSite(session.siteId);
+    const compEl = document.getElementById('op-company');
+    if (compEl && site) compEl.value = site.company || 'Robert Quinn Ltd';
+    // Today's date
+    const dateEl = document.getElementById('op-date');
+    if (dateEl && !dateEl.value) dateEl.value = new Date().toISOString().split('T')[0];
     // Show name + site in header
     const selName = document.getElementById('sel-user-name');
     const selSite = document.getElementById('sel-site-name');
-    const site = AUTH.getSite(session.siteId);
     if (selName) selName.textContent = (AUTH.ROLES[session.role]?.icon || '👤') + ' ' + session.name;
     if (selSite) selSite.textContent = site ? '📍 ' + site.name : 'GA SAFETY INSPECTION';
-    // Show history button for operators (others use index.html)
+    // Show history button for operators
     if (session.role === 'operator') {
       const btn = document.getElementById('btn-history');
       if (btn) btn.style.display = '';
