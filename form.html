@@ -1227,8 +1227,12 @@ function initAfterLogin() {
         document.getElementById('form-step').style.display = '';
         document.getElementById('btn-back-select').style.display = '';
         renderFormOptions();
-        if (urlForm) { selectForm(urlForm); }
-        showScreen('select');
+        if (urlForm) {
+          selectForm(urlForm);
+          // selectForm calls showScreen('operator') internally, so we're done
+        } else {
+          showScreen('select');
+        }
       }
     } else {
       // Plant still not found — redirect to login which will fetch all data from server
