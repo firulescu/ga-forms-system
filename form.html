@@ -27,7 +27,7 @@
     --danger: #FF4757;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; min-height: 100vh; }
+  body { overflow-x: hidden !important; background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; min-height: 100vh; }
   
   /* HEADER */
   .header {
@@ -66,7 +66,7 @@
 
   /* FORM SELECTOR */
   .form-options { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
-  .form-option {
+  .form-option { box-sizing:border-box; width:100%;
     background: var(--surface); border: 2px solid var(--border); border-radius: 14px;
     padding: 18px; cursor: pointer; transition: all 0.2s;
   }
@@ -354,7 +354,7 @@
 </div>
 
 <!-- STEP: SELECT PLANT & FORM -->
-<div id="screen-select">
+<div id="screen-select" style="max-width:600px;margin:0 auto;">
   <div class="header">
     <div class="header-info">
       <div class="header-title" id="sel-user-name">🛡️ GA Forms</div>
@@ -367,14 +367,14 @@
 
   <div id="select-content" style="padding-bottom:100px;">
     <!-- Plant selector -->
-    <div id="plant-step" style="padding:20px;">
+    <div id="plant-step" style="padding:20px 20px 20px 20px;">
       <div class="selector-title">Select Plant</div>
       <div class="selector-sub">Which piece of plant are you inspecting?</div>
       <div id="plant-list" class="plant-list"></div>
     </div>
 
     <!-- Form selector (shown after plant selected) -->
-    <div id="form-step" style="padding:0 20px;display:none;">
+    <div id="form-step" style="padding:0 20px;display:none;width:100%;box-sizing:border-box;">
       <div class="selector-title">Select Form</div>
       <div class="selector-sub">Which inspection form do you need to fill?</div>
       <div id="form-options" class="form-options"></div>
