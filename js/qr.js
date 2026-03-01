@@ -4,14 +4,8 @@ const QRGen = {
     const base = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}`;
     const pin = (typeof AUTH !== 'undefined') ? (AUTH.getSite(siteId)?.operatorPin || '') : '';
     const tok = pin ? btoa('op:' + pin) : '';
-    const plant = (typeof DB !== 'undefined') ? DB.getPlant(plantId) : null;
-    const formType = plant?.formType || '';
-    // Keep plant name short — truncate to 20 chars to keep QR scannable
-    const shortName = plant ? encodeURIComponent(plant.name.substring(0, 20)) : '';
-    const shortLoc  = plant ? encodeURIComponent((plant.location||'').substring(0, 20)) : '';
-    const shortSite = (typeof AUTH !== 'undefined') ? encodeURIComponent((AUTH.getSite(siteId)?.name||'').substring(0,20)) : '';
-    const photo = plant ? encodeURIComponent(plant.photo || '') : '';
-    return `${base}form.html?plant=${plantId}&site=${siteId}${tok?'&tok='+tok:''}${formType?'&form='+formType:''}${shortName?'&pn='+shortName:''}${photo?'&pp='+photo:''}${shortLoc?'&pl='+shortLoc:''}${shortSite?'&sn='+shortSite:''}`;
+    // Minimal URL — plant+site+tok only, form.html loads rest from server
+    return `${base}form.html?plant=${plantId}&site=${siteId}${tok?'&tok='+tok:''}`;
   },
 
   // Generate QR code as data URL for a plant
