@@ -2855,26 +2855,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   const b = document.getElementById('issues-badge');
   if (issues.length > 0) { b.style.display = ''; b.textContent = issues.length; }
   
-  // Firebase sync — pull operator submissions from cloud
-  const siteId = AUTH.getSiteId();
-  if (typeof FIREBASE_URL !== 'undefined' && FIREBASE_URL && siteId) {
-    FBSYNC.init(FIREBASE_URL, siteId);
-    const result = await FBSYNC.pullAll(siteId);
-    if (result.ok && (result.submissions > 0 || result.defects > 0)) {
-      updateNotifBadge();
-      const ib = document.getElementById('issues-badge');
-      const ci = DB.checkCompliance();
-      if (ci.length > 0) { ib.style.display = ''; ib.textContent = ci.length; }
-    }
-  }
+  // Sync from server BEFORE rendering
+  await syncFromCloud(true);
 
   renderDashboard();
 
-  // Update pending sync badge from offline queue
   updateSyncBadge();
   window.addEventListener('storage', (e) => {
     if (e.key === 'ga_pending_count') updateSyncBadge();
   });
+
+  // Auto-refresh every 60 seconds
+  setInterval(() => syncFromCloud(true), 60000);
+});
 
   // Auto-refresh every 30 seconds — pull latest submissions from Firebase
   let refreshSeconds = 30;
