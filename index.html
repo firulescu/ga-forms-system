@@ -390,25 +390,25 @@
       <!-- ===== DASHBOARD PAGE ===== -->
       <div class="page active" id="page-dashboard">
         <div class="stats-grid">
-          <div class="stat-card green">
+          <div class="stat-card green" onclick="showPage('plants')" style="cursor:pointer;">
             <span class="stat-icon">🏗️</span>
             <div class="stat-value" id="stat-plants">0</div>
             <div class="stat-label">Total Plants</div>
             <div class="stat-sub">On register</div>
           </div>
-          <div class="stat-card orange">
+          <div class="stat-card orange" onclick="showPage('submissions')" style="cursor:pointer;">
             <span class="stat-icon">📋</span>
             <div class="stat-value" id="stat-weekly">0</div>
             <div class="stat-label">Forms This Week</div>
             <div class="stat-sub">Last 7 days</div>
           </div>
-          <div class="stat-card purple">
+          <div class="stat-card purple" onclick="showPage('compliance')" style="cursor:pointer;">
             <span class="stat-icon">✅</span>
             <div class="stat-value" id="stat-compliant">0</div>
             <div class="stat-label">Compliant Plants</div>
             <div class="stat-sub">Inspected today</div>
           </div>
-          <div class="stat-card red">
+          <div class="stat-card red" onclick="showPage('defects')" style="cursor:pointer;">
             <span class="stat-icon">⚠️</span>
             <div class="stat-value" id="stat-issues">0</div>
             <div class="stat-label">Open Issues</div>
