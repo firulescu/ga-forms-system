@@ -1180,6 +1180,23 @@ function initAfterLogin() {
     } else { showScreen('select'); }
   }
 
+  // Auto-login operator from QR token if not already logged in
+  if (!AUTH.isLoggedIn()) {
+    const tok = params.get('tok');
+    const siteId = params.get('site');
+    if (tok && siteId) {
+      try {
+        const decoded = atob(tok);
+        if (decoded.startsWith('op:')) {
+          const pin = decoded.slice(3);
+          if (AUTH.isOperatorPin(pin, siteId)) {
+            AUTH.setOperatorSession('Operator', siteId);
+          }
+        }
+      } catch(e) {}
+    }
+  }
+
   // Handle URL params
   if (urlPlant) {
     state.plantId = urlPlant;
