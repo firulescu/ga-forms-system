@@ -1200,6 +1200,9 @@ function initAfterLogin() {
             } catch(e){return p;}
           });
           DB.sset('plants', parsed);
+          // Also save with site prefix in case user logs in after
+          const sid = params.get('site') || '';
+          if (sid) localStorage.setItem(sid + ':plants', JSON.stringify(parsed));
           state.plant = parsed.find(p => p.id === urlPlant) || null;
         }
       } catch(e) { console.warn('plant fetch failed', e); }
