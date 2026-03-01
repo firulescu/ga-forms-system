@@ -708,10 +708,12 @@ async function submitForm() {
   }
 
   const btnSubmit = document.getElementById('btn-submit');
-  // Duplicate submission prevention — disable for 5 seconds
   if (btnSubmit._submitting) return;
   btnSubmit._submitting = true;
   if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.textContent = 'Submitting…'; }
+  const btnTimeout = setTimeout(() => {
+    if (btnSubmit) { btnSubmit._submitting = false; btnSubmit.disabled = false; btnSubmit.textContent = 'Submit ✓'; }
+  }, 8000);
 
   const safeSignature = (typeof sigData !== 'undefined') ? sigData : null;
   const sub = DB.addSubmission({
@@ -795,7 +797,7 @@ async function submitForm() {
     }
   }
 
-  // Clear autosaved draft
+  clearTimeout(btnTimeout);
   clearDraft();
 
     // Show success
