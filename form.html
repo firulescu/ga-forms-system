@@ -1180,6 +1180,23 @@ function initAfterLogin() {
     } else { showScreen('select'); }
   }
 
+  // Auto-login operator from QR token if not already logged in
+  if (!AUTH.isLoggedIn()) {
+    const tok = params.get('tok');
+    const siteId = params.get('site');
+    if (tok && siteId) {
+      try {
+        const decoded = atob(tok);
+        if (decoded.startsWith('op:')) {
+          const pin = decoded.slice(3);
+          if (AUTH.isOperatorPin(pin, siteId)) {
+            AUTH.setOperatorSession('Operator', siteId);
+          }
+        }
+      } catch(e) {}
+    }
+  }
+
   // Handle URL params
   if (urlPlant) {
     state.plantId = urlPlant;
@@ -1206,6 +1223,17 @@ function initAfterLogin() {
           state.plant = parsed.find(p => p.id === urlPlant) || null;
         }
       } catch(e) { console.warn('plant fetch failed', e); }
+
+      // Last resort — build minimal plant from URL params so operator can proceed
+      if (!state.plant) {
+        const pn = params.get('pn');
+        const pf = params.get('form');
+        if (pn) {
+          state.plant = { id: urlPlant, name: decodeURIComponent(pn), location: '', photo: '🏗️', formType: pf || 'GA3' };
+          const plants = DB.sget('plants') || [];
+          if (!plants.find(p => p.id === urlPlant)) { plants.push(state.plant); DB.sset('plants', plants); }
+        }
+      }
     }
 
     if (state.plant) {
@@ -1216,8 +1244,18 @@ function initAfterLogin() {
         document.getElementById('form-step').style.display = '';
         document.getElementById('btn-back-select').style.display = '';
         renderFormOptions();
-        if (urlForm) { selectForm(urlForm); }
+        if (urlForm) {
+          selectForm(urlForm);
+          // selectForm calls showScreen('operator') internally, so we're done
+        } else {
+          showScreen('select');
+        }
       }
+    } else {
+      // Plant still not found — redirect to login which will fetch all data from server
+      const returnUrl = encodeURIComponent(window.location.href);
+      window.location.href = 'login.html?return=' + returnUrl;
+      return;
     }
   }
 
