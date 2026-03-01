@@ -1048,6 +1048,13 @@ const PLANT_TYPES = [
   { label:'Road Planer',               formType:'GA2-EXC',   icon:'🪚', hint:'Cold planing and road milling machines', category:'Road' },
   { label:'Cable / Pipe Layer',        formType:'GA2-EXC',   icon:'🪤', hint:'Trenching machines and pipe layers', category:'Road' },
   // ── OTHER ─────────────────────────────────────────────────
+  // ── ACCESS EQUIPMENT ────────────────────────────────────────
+  { label:'Step Ladder',               formType:'GA2-LADD',  icon:'🪜', hint:'Stepladders — A-frame and platform top', category:'Access' },
+  { label:'Extension Ladder',          formType:'GA2-LADD',  icon:'📏', hint:'Single and double extension ladders', category:'Access' },
+  { label:'Roof Ladder',               formType:'GA2-LADD',  icon:'🏠', hint:'Roof hook ladders for pitched roof access', category:'Access' },
+  { label:'Podium Ladder',             formType:'GA2-PODIUM',icon:'🏛️', hint:'Podium steps with guardrail platform', category:'Access' },
+  { label:'Aluminium Tower / PASMA',   formType:'GA2-TOWER', icon:'🗼', hint:'Mobile aluminium access towers — PASMA', category:'Access' },
+  { label:'Hop-Up / Platform Step',    formType:'GA2-PODIUM',icon:'⬜', hint:'Low-level hop-ups and platform steps', category:'Access' },
   { label:'Other / General Plant',     formType:null,        icon:'⚙️', hint:'GA3 hazard assessment and GA4 maintenance only', category:'Other' },
 ];
 
@@ -1091,6 +1098,11 @@ function openAddPlantModal(existing = null) {
         ${selectedType
           ? `<span style="font-size:24px;">${selectedType.icon}</span><div><div style="font-size:13px;font-weight:700;">${selectedType.label}</div><div style="font-size:10px;color:var(--muted);">${selectedType.hint}</div></div>`
           : `<span style="color:var(--muted);font-size:11px;font-family:'Space Mono',monospace;">👆 Pick a type from the library below</span>`}
+      </div>
+      <div style="margin-bottom:10px;">
+        <input type="text" id="mp-search" class="form-input" placeholder="🔍 Search plant type..."
+          oninput="filterPlantTypes(this.value)"
+          style="width:100%;box-sizing:border-box;padding:10px 14px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:13px;outline:none;">
       </div>
       <div id="mp-plant-grid" style="max-height:320px;overflow-y:auto;padding-right:2px;">${gridHTML}</div>
     </div>`,
