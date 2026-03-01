@@ -2015,9 +2015,22 @@ async function syncFromCloud(silent = false) {
     }
 
     if (Array.isArray(plants) && plants.length > 0) {
-      // Parse data field if needed
+      // Parse data field — server stores full object in data column
       const parsed = plants.map(p => {
-        try { return typeof p.data === 'string' ? {...JSON.parse(p.data), ...p} : p; } catch(e) { return p; }
+        try {
+          const base = typeof p.data === 'string' && p.data ? JSON.parse(p.data) : {};
+          // Server columns take priority for key fields
+          return { ...base,
+            id: p.id || base.id,
+            name: p.name || base.name,
+            location: p.location || base.location,
+            photo: p.photo || base.photo,
+            formType: p.form_type || p.formType || base.formType,
+            type: p.type || base.type,
+            siteId: p.site_id || p.siteId || base.siteId || '',
+            lastInspected: p.lastInspected || base.lastInspected || null,
+          };
+        } catch(e) { return p; }
       });
       DB.sset('plants', parsed);
     }
