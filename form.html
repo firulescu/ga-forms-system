@@ -1066,7 +1066,7 @@ function loadDraft() {
 // ============================================================
 // INIT
 // ============================================================
-function initAfterLogin() {
+async function initAfterLogin() {
   const session = AUTH.getSession();
   const siteId = session?.siteId;
 
