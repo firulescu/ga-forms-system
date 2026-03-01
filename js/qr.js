@@ -55,6 +55,7 @@ const QRGen = {
       <head>
         <title>QR Label - ${plant.name}</title>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>
+        <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"><\/script>
         <style>
           @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
           body { font-family: 'Space Mono', monospace; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #f5f5f5; }
@@ -76,24 +77,30 @@ const QRGen = {
           <div class="scan-text">SCAN TO INSPECT</div>
         </div>
         <script>
-          new QRCode(document.getElementById('qr'), {
-            text: '${url}',
-            width: 180, height: 180,
-            colorDark: '#0A0E1A', colorLight: '#ffffff',
-            correctLevel: QRCode.CorrectLevel.H
-          });
-          // Wait for QR image to actually render before printing
-          function waitAndPrint(tries) {
-            const img = document.querySelector('#qr img');
-            if (img && img.complete && img.naturalWidth > 0) {
-              window.print();
-            } else if (tries > 0) {
-              setTimeout(() => waitAndPrint(tries - 1), 200);
-            } else {
-              window.print(); // give up waiting, print anyway
+          function initQR() {
+            if (typeof QRCode === 'undefined') {
+              setTimeout(initQR, 100);
+              return;
             }
+            new QRCode(document.getElementById('qr'), {
+              text: '${url}',
+              width: 180, height: 180,
+              colorDark: '#0A0E1A', colorLight: '#ffffff',
+              correctLevel: QRCode.CorrectLevel.H
+            });
+            function waitAndPrint(tries) {
+              const img = document.querySelector('#qr img');
+              if (img && img.complete && img.naturalWidth > 0) {
+                window.print();
+              } else if (tries > 0) {
+                setTimeout(() => waitAndPrint(tries - 1), 300);
+              } else {
+                window.print();
+              }
+            }
+            setTimeout(() => waitAndPrint(15), 600);
           }
-          setTimeout(() => waitAndPrint(10), 500);
+          initQR();
         <\/script>
       </body>
       </html>
