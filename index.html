@@ -987,20 +987,89 @@ function viewPlant(id) {
 
 // Plant type → formType + icon mapping
 const PLANT_TYPES = [
-  { label:'Scissor Lift / MEWP',   formType:'GA2-MEWP',  icon:'🔼', hint:'Scissor lifts, boom lifts, cherry pickers' },
-  { label:'Excavator',             formType:'GA2-EXC',   icon:'🔵', hint:'Tracked and wheeled excavators' },
-  { label:'Dumper',                formType:'GA2-DMP',   icon:'🚛', hint:'Forward tip and swivel skip dumpers' },
-  { label:'Mobile Crane',          formType:'GA2-CRANE', icon:'🏗️', hint:'Truck, all-terrain or crawler cranes' },
-  { label:'Telehandler',           formType:'GA2-TELEH', icon:'🚜', hint:'Telescopic handlers' },
-  { label:'Generator',             formType:'GA2-GEN',   icon:'⚡', hint:'Diesel generators and power packs' },
-  { label:'Compressor',            formType:'GA2-COMP',  icon:'💨', hint:'Air compressors and hydraulic power packs' },
-  { label:'Formwork / Falsework',  formType:'GA2-FWORK', icon:'🧱', hint:'Formwork and falsework structures' },
-  { label:'Other / General Plant', formType:null,        icon:'⚙️', hint:'GA3 hazard assessment and GA4 maintenance only' },
+  // ── MEWP ─────────────────────────────────────────────────
+  { label:'Scissor Lift',              formType:'GA2-MEWP',  icon:'🛗', hint:'Electric or diesel scissor lift platforms', category:'MEWP' },
+  { label:'Boom Lift',                 formType:'GA2-MEWP',  icon:'🦒', hint:'Articulated and telescopic boom lifts', category:'MEWP' },
+  { label:'Spider / Track MEWP',       formType:'GA2-MEWP',  icon:'🕷️', hint:'Tracked spider lifts for rough terrain', category:'MEWP' },
+  { label:'Vertical Mast Lift',        formType:'GA2-MEWP',  icon:'⬆️', hint:'Personnel mast climbers and vertical lifts', category:'MEWP' },
+  { label:'Mast Climber',              formType:'GA2-MEWP',  icon:'🧗', hint:'Mast climbing work platforms', category:'MEWP' },
+  { label:'Suspended Platform',        formType:'GA2-MEWP',  icon:'🪟', hint:'Cradles and suspended access platforms', category:'MEWP' },
+  // ── CRANES ───────────────────────────────────────────────
+  { label:'Mobile Crane',              formType:'GA2-CRANE', icon:'🏗️', hint:'Truck, all-terrain or crawler cranes', category:'Crane' },
+  { label:'Tower Crane',               formType:'GA2-CRANE', icon:'🗼', hint:'Static or climbing tower cranes', category:'Crane' },
+  { label:'Crawler Crane',             formType:'GA2-CRANE', icon:'⛏️', hint:'Lattice boom crawler cranes', category:'Crane' },
+  { label:'Overhead Crane',            formType:'GA2-CRANE', icon:'🔩', hint:'Fixed overhead travelling cranes', category:'Crane' },
+  { label:'Piling Rig',                formType:'GA2-CRANE', icon:'🔨', hint:'CFA, bored pile and driven pile rigs', category:'Crane' },
+  { label:'Concrete Boom Pump',        formType:'GA2-CRANE', icon:'🪣', hint:'Truck-mounted boom concrete pumps', category:'Crane' },
+  // ── LIFTING ───────────────────────────────────────────────
+  { label:'Telehandler',               formType:'GA2-TELEH', icon:'🏭', hint:'Telescopic handlers / reach trucks', category:'Lifting' },
+  { label:'Rough Terrain Forklift',    formType:'GA2-TELEH', icon:'🍴', hint:'Rough terrain and all-terrain forklifts', category:'Lifting' },
+  { label:'Counterbalance Forklift',   formType:'GA2-TELEH', icon:'⚖️', hint:'Warehouse and yard counterbalance forklifts', category:'Lifting' },
+  // ── EARTHMOVING ───────────────────────────────────────────
+  { label:'Tracked Excavator',         formType:'GA2-EXC',   icon:'🦾', hint:'20t–40t tracked excavators', category:'Earthmoving' },
+  { label:'Mini Excavator',            formType:'GA2-EXC',   icon:'🪛', hint:'Up to 6t compact excavators', category:'Earthmoving' },
+  { label:'Long Reach Excavator',      formType:'GA2-EXC',   icon:'🦩', hint:'Long reach and demolition excavators', category:'Earthmoving' },
+  { label:'Wheeled Excavator',         formType:'GA2-EXC',   icon:'🔵', hint:'Wheeled / rubber-tyred excavators', category:'Earthmoving' },
+  { label:'Backhoe Loader',            formType:'GA2-EXC',   icon:'🔧', hint:'JCB 3CX/4CX type backhoe loaders', category:'Earthmoving' },
+  { label:'Wheeled Loader',            formType:'GA2-EXC',   icon:'🥄', hint:'JCB, Volvo, CAT wheel loaders', category:'Earthmoving' },
+  { label:'Skid Steer Loader',         formType:'GA2-EXC',   icon:'📦', hint:'Skid steer and compact track loaders', category:'Earthmoving' },
+  { label:'Bulldozer',                 formType:'GA2-EXC',   icon:'⬛', hint:'Tracked bulldozers and dozers', category:'Earthmoving' },
+  { label:'Motor Grader',              formType:'GA2-EXC',   icon:'📐', hint:'Road graders and motor graders', category:'Earthmoving' },
+  { label:'Compactor / Roller',        formType:'GA2-EXC',   icon:'🎡', hint:'Vibrating rollers — single and double drum', category:'Earthmoving' },
+  { label:'Tracked Paver',             formType:'GA2-EXC',   icon:'🛣️', hint:'Asphalt and concrete pavers', category:'Earthmoving' },
+  { label:'Vacuum Excavator',          formType:'GA2-EXC',   icon:'🌪️', hint:'Hydrovac and suction excavators', category:'Earthmoving' },
+  // ── DUMPERS & HAULAGE ─────────────────────────────────────
+  { label:'Forward Tip Dumper',        formType:'GA2-DMP',   icon:'⏩', hint:'Site dumpers — forward tipping skip', category:'Dumpers' },
+  { label:'Swivel Skip Dumper',        formType:'GA2-DMP',   icon:'🔄', hint:'Site dumpers — swivel skip', category:'Dumpers' },
+  { label:'Articulated Dump Truck',    formType:'GA2-DMP',   icon:'🚚', hint:'ADTs — 25t to 45t articulated haulers', category:'Dumpers' },
+  { label:'Rigid Dump Truck',          formType:'GA2-DMP',   icon:'🛻', hint:'Rigid body dump trucks', category:'Dumpers' },
+  { label:'Concrete Mixer Truck',      formType:'GA2-DMP',   icon:'🌀', hint:'Transit / agitator mixer trucks', category:'Dumpers' },
+  { label:'Water Bowser',              formType:'GA2-DMP',   icon:'🚿', hint:'Site water bowsers and dust suppression', category:'Dumpers' },
+  // ── POWER ─────────────────────────────────────────────────
+  { label:'Diesel Generator',          formType:'GA2-GEN',   icon:'⚡', hint:'Diesel generators and power packs', category:'Power' },
+  { label:'Towable Generator',         formType:'GA2-GEN',   icon:'🔌', hint:'Road-towable trailer generators', category:'Power' },
+  { label:'Silent Generator',          formType:'GA2-GEN',   icon:'🔋', hint:'Acoustic canopy generators', category:'Power' },
+  { label:'Lighting Tower',            formType:'GA2-GEN',   icon:'💡', hint:'Diesel and hybrid lighting towers', category:'Power' },
+  { label:'Welding Set',               formType:'GA2-GEN',   icon:'✴️', hint:'Diesel welding generators', category:'Power' },
+  { label:'Diesel Air Compressor',     formType:'GA2-COMP',  icon:'💨', hint:'Diesel rotary screw compressors', category:'Power' },
+  { label:'Electric Compressor',       formType:'GA2-COMP',  icon:'🌬️', hint:'Electric workshop compressors', category:'Power' },
+  { label:'Hydraulic Power Pack',      formType:'GA2-COMP',  icon:'🔴', hint:'Hydraulic power units for breaking', category:'Power' },
+  { label:'Water Pump',                formType:'GA2-COMP',  icon:'💧', hint:'Diesel and electric dewatering pumps', category:'Power' },
+  // ── CONCRETE ──────────────────────────────────────────────
+  { label:'Line Concrete Pump',        formType:'GA2-COMP',  icon:'〰️', hint:'Trailer-mounted line / static pumps', category:'Concrete' },
+  { label:'Self-Loading Mixer',        formType:'GA2-DMP',   icon:'🔃', hint:'Self-loading concrete mixers', category:'Concrete' },
+  { label:'Batching Plant',            formType:'GA2-FWORK', icon:'🏗️', hint:'Mobile and static batching plants', category:'Concrete' },
+  // ── STRUCTURE ─────────────────────────────────────────────
+  { label:'Formwork / Falsework',      formType:'GA2-FWORK', icon:'🧱', hint:'Props, shutters and falsework systems', category:'Structure' },
+  { label:'Scaffolding System',        formType:'GA2-FWORK', icon:'🪜', hint:'Tube and fitting, system scaffolding', category:'Structure' },
+  // ── ROAD & CIVILS ─────────────────────────────────────────
+  { label:'Road Sweeper',              formType:'GA2-EXC',   icon:'🧹', hint:'Mechanical road sweepers', category:'Road' },
+  { label:'Road Planer',               formType:'GA2-EXC',   icon:'🪚', hint:'Cold planing and road milling machines', category:'Road' },
+  { label:'Cable / Pipe Layer',        formType:'GA2-EXC',   icon:'🪤', hint:'Trenching machines and pipe layers', category:'Road' },
+  // ── OTHER ─────────────────────────────────────────────────
+  { label:'Other / General Plant',     formType:null,        icon:'⚙️', hint:'GA3 hazard assessment and GA4 maintenance only', category:'Other' },
 ];
 
 function openAddPlantModal(existing = null) {
   const plant = existing || { id:'', name:'', location:'', formType:null, photo:'⚙️' };
-  const currentType = PLANT_TYPES.find(t => t.formType === plant.formType) || PLANT_TYPES[PLANT_TYPES.length-1];
+  const selectedType = PLANT_TYPES.find(t => t.icon === plant.photo && t.formType === plant.formType) || null;
+  const categories = [...new Set(PLANT_TYPES.map(t => t.category))];
+  const gridHTML = categories.map(cat => `
+    <div style="margin-bottom:14px;">
+      <div style="font-size:9px;letter-spacing:2px;color:var(--muted);font-family:'Space Mono',monospace;margin-bottom:6px;">${cat.toUpperCase()}</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
+        ${PLANT_TYPES.filter(t=>t.category===cat).map(t=>{
+          const sel = selectedType&&selectedType.label===t.label;
+          return '<div onclick="selectPlantType(\''+t.label.replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\',\''+( t.formType||'')+'\',' +'\'' +t.icon+ '\')"'+
+            ' title="'+t.hint+'"'+
+            ' id="pt'+t.label.replace(/[^a-z0-9]/gi,'')+ '"'+
+            ' style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px;border-radius:10px;cursor:pointer;border:2px solid '+(sel?'var(--accent)':'var(--border)')+';background:'+(sel?'rgba(46,125,82,0.15)':'var(--surface2)')+';transition:all 0.15s;text-align:center;">'+
+            '<span style="font-size:24px;line-height:1;">'+t.icon+'</span>'+
+            '<span style="font-size:8px;color:var(--muted);line-height:1.2;font-family:\'Space Mono\',monospace;">'+t.label+'</span>'+
+            '</div>';
+        }).join('')}
+      </div>
+    </div>`).join('');
 
   UI.modal(
     existing ? '✏️ Edit Plant' : '➕ Add New Plant',
@@ -1012,33 +1081,46 @@ function openAddPlantModal(existing = null) {
       <label class="form-label">LOCATION ON SITE *</label>
       <input type="text" class="form-input" id="mp-location" value="${plant.location}" placeholder="e.g. North Yard, Level 2">
     </div>
+    <input type="hidden" id="mp-formtype" value="${plant.formType||''}">
+    <input type="hidden" id="mp-icon" value="${plant.photo||'⚙️'}">
+    <input type="hidden" id="mp-typelabel" value="${selectedType?.label||''}">
     <div class="form-group">
       <label class="form-label">PLANT TYPE *</label>
-      <select class="form-input form-select" id="mp-formtype" onchange="updatePlantIcon()">
-        ${PLANT_TYPES.map(t => `<option value="${t.formType||''}" data-icon="${t.icon}" ${t.formType===plant.formType?'selected':''}>${t.icon} ${t.label}</option>`).join('')}
-      </select>
-      <div id="mp-type-hint" style="font-size:11px;color:var(--muted);margin-top:5px;font-family:'Space Mono',monospace;">${currentType.hint}</div>
+      <div id="mp-selected-type" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;background:var(--surface2);border:2px solid var(--accent);margin-bottom:10px;min-height:48px;">
+        ${selectedType
+          ? `<span style="font-size:24px;">${selectedType.icon}</span><div><div style="font-size:13px;font-weight:700;">${selectedType.label}</div><div style="font-size:10px;color:var(--muted);">${selectedType.hint}</div></div>`
+          : `<span style="color:var(--muted);font-size:11px;font-family:'Space Mono',monospace;">👆 Pick a type from the library below</span>`}
+      </div>
+      <div style="max-height:320px;overflow-y:auto;padding-right:2px;">${gridHTML}</div>
     </div>`,
     `<button onclick="UI.closeModal()" style="${UI.btnStyle('secondary')}">Cancel</button>
      <button onclick="savePlant('${plant.id}')" style="${UI.btnStyle('primary')}">${existing ? 'Save Changes' : 'Add Plant'}</button>`
   );
 }
 
-function updatePlantIcon() {
-  const sel  = document.getElementById('mp-formtype');
-  const opt  = sel.options[sel.selectedIndex];
-  const type = PLANT_TYPES.find(t => (t.formType||'') === sel.value);
-  if (type) document.getElementById('mp-type-hint').textContent = type.hint;
+function selectPlantType(label, formType, icon) {
+  document.getElementById('mp-formtype').value = formType;
+  document.getElementById('mp-icon').value = icon;
+  document.getElementById('mp-typelabel').value = label;
+  const t = PLANT_TYPES.find(p => p.label === label);
+  document.getElementById('mp-selected-type').innerHTML =
+    '<span style="font-size:24px;">'+icon+'</span><div><div style="font-size:13px;font-weight:700;">'+label+'</div><div style="font-size:10px;color:var(--muted);">'+(t?t.hint:'')+'</div></div>';
+  PLANT_TYPES.forEach(p => {
+    const el = document.getElementById('pt'+p.label.replace(/[^a-z0-9]/gi,''));
+    if (!el) return;
+    el.style.borderColor = p.label===label ? 'var(--accent)' : 'var(--border)';
+    el.style.background  = p.label===label ? 'rgba(46,125,82,0.15)' : 'var(--surface2)';
+  });
 }
+
+function updatePlantIcon() {}
 
 function savePlant(existingId) {
   const name     = document.getElementById('mp-name').value.trim();
   const location = document.getElementById('mp-location').value.trim();
-  const sel      = document.getElementById('mp-formtype');
-  const formTypeVal = sel.value || null;
-  const plantTypeObj = PLANT_TYPES.find(t => (t.formType||'') === (formTypeVal||'')) || PLANT_TYPES[PLANT_TYPES.length-1];
-  const photo    = plantTypeObj.icon;
-  const type     = plantTypeObj.label;
+  const formTypeVal = document.getElementById('mp-formtype').value || null;
+  const photo    = document.getElementById('mp-icon').value || '⚙️';
+  const type     = document.getElementById('mp-typelabel').value || 'Other / General Plant';
 
   if (!name || !location) { UI.toast('Name and location are required', 'error'); return; }
 
