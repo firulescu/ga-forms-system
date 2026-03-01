@@ -528,7 +528,21 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  if (!sites.length || !users.length) { goStep(0); return; }
+  if (!sites.length || !users.length) {
+    try {
+      const apiBase = 'https://46.225.83.168.nip.io';
+      const remoteSites = await fetch(apiBase + '/api/sites').then(r => r.json()).catch(() => []);
+      if (Array.isArray(remoteSites) && remoteSites.length > 0) {
+        remoteSites.forEach(s => AUTH.saveSite(s));
+        const freshSites = AUTH.getSites().filter(s => s.active !== false);
+        if (freshSites.length) {
+          if (freshSites.length === 1) { selectedSite = freshSites[0]; goStep(2); return; }
+          goStep(1); return;
+        }
+      }
+    } catch(e) { console.warn('Server pull failed:', e); }
+    goStep(0); return;
+  }
 
   const isQR = !!(plantId);
   if (isQR) {
