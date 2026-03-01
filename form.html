@@ -1295,6 +1295,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.addEventListener('online', updateConnStatus);
   window.addEventListener('offline', updateConnStatus);
 
+  // If QR scan with tok param, clear any stale session first
+  if (params.get("tok")) AUTH.clearSession();
+
   // Handle auth — show inline modal instead of redirecting
   if (!AUTH.isLoggedIn()) {
     const overlay = document.getElementById('login-overlay');
