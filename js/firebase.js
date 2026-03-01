@@ -40,9 +40,9 @@ const FBSYNC = {
         fetch(this._base + "/api/notifications?site_id=" + sid).then(r=>r.json()),
         fetch(this._base + "/api/defects?site_id=" + sid).then(r=>r.json())
       ]);
-      if (Array.isArray(subs)) DB.set("submissions", subs);
-      if (Array.isArray(notifs)) DB.set("notifications", notifs);
-      if (Array.isArray(defects)) DB.set("defects", defects);
+      if (Array.isArray(subs)) DB.sset("submissions", subs);
+      if (Array.isArray(notifs)) DB.sset("notifications", notifs);
+      if (Array.isArray(defects)) DB.sset("defects", defects);
       return { subs, notifs, defects };
     } catch(e) { console.warn("API pull failed:", e); return {}; }
   },
