@@ -1186,15 +1186,23 @@ function initAfterLogin() {
     state.plant = DB.getPlant(urlPlant);
 
     if (!state.plant) {
-      const pn = params.get('pn');
-      const pp = params.get('pp');
-      const pl = params.get('pl');
-      const pf = params.get('form');
-      if (pn) {
-        state.plant = { id: urlPlant, name: decodeURIComponent(pn), photo: decodeURIComponent(pp||''), location: decodeURIComponent(pl||''), formType: pf || 'GA2-GEN' };
-        const plants = DB.sget('plants') || [];
-        if (!plants.find(p => p.id === urlPlant)) { plants.push(state.plant); DB.sset('plants', plants); }
-      }
+      // Plant not in localStorage — fetch all plants from server
+      try {
+        const siteId = params.get('site') || '';
+        const remote = await fetch('https://46.225.83.168.nip.io/api/plants?site_id=' + siteId).then(r=>r.json()).catch(()=>[]);
+        if (Array.isArray(remote) && remote.length > 0) {
+          const parsed = remote.map(p => {
+            try {
+              const base = typeof p.data==='string' && p.data ? JSON.parse(p.data) : {};
+              return {...base, id:p.id||base.id, name:p.name||base.name, location:p.location||base.location,
+                photo:p.photo||base.photo, formType:p.form_type||p.formType||base.formType,
+                type:p.type||base.type, siteId:p.site_id||base.siteId||''};
+            } catch(e){return p;}
+          });
+          DB.sset('plants', parsed);
+          state.plant = parsed.find(p => p.id === urlPlant) || null;
+        }
+      } catch(e) { console.warn('plant fetch failed', e); }
     }
 
     if (state.plant) {
