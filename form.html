@@ -1206,6 +1206,17 @@ function initAfterLogin() {
           state.plant = parsed.find(p => p.id === urlPlant) || null;
         }
       } catch(e) { console.warn('plant fetch failed', e); }
+
+      // Last resort — build minimal plant from URL params so operator can proceed
+      if (!state.plant) {
+        const pn = params.get('pn');
+        const pf = params.get('form');
+        if (pn) {
+          state.plant = { id: urlPlant, name: decodeURIComponent(pn), location: '', photo: '🏗️', formType: pf || 'GA3' };
+          const plants = DB.sget('plants') || [];
+          if (!plants.find(p => p.id === urlPlant)) { plants.push(state.plant); DB.sset('plants', plants); }
+        }
+      }
     }
 
     if (state.plant) {

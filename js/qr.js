@@ -4,10 +4,11 @@ const QRGen = {
     const base = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}`;
     const pin = (typeof AUTH !== 'undefined') ? (AUTH.getSite(siteId)?.operatorPin || '') : '';
     const tok = pin ? btoa('op:' + pin) : '';
-    // Minimal URL — plant+site+tok+formtype only (no photo/name to keep URL short)
     const plant = (typeof DB !== 'undefined') ? DB.getPlant(plantId) : null;
     const formType = plant?.formType || '';
-    return `${base}form.html?plant=${plantId}&site=${siteId}${tok?'&tok='+tok:''}${formType?'&form='+formType:''}`;
+    // Include short name (max 15 chars) so form.html works without server fetch
+    const pn = plant ? encodeURIComponent(plant.name.substring(0, 15)) : '';
+    return `${base}form.html?plant=${plantId}&site=${siteId}${tok?'&tok='+tok:''}${formType?'&form='+formType:''}${pn?'&pn='+pn:''}`;
   },
 
   // Generate QR code as data URL for a plant
