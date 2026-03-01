@@ -62,14 +62,12 @@ const QRGen = {
       const canvas = tmp.querySelector('canvas');
       let qrDataUrl = null;
 
-      if (img && img.complete && img.naturalWidth > 0) {
-        // Use img src — most reliable
-        qrDataUrl = img.src;
-      } else if (canvas && canvas.width > 0) {
-        // Fallback to canvas only if img not ready
+      if (canvas && canvas.width > 0) {
         const data = canvas.toDataURL('image/png');
-        // Check it's not blank (blank = very short data URL)
         if (data && data.length > 1000) qrDataUrl = data;
+      }
+      if (!qrDataUrl && img && img.complete && img.src && img.src.startsWith('data:')) {
+        qrDataUrl = img.src;
       }
 
       if (qrDataUrl) {
