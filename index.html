@@ -1862,24 +1862,83 @@ function markAllRead() {
   UI.toast('All notifications marked as read', 'success');
 }
 
-async function syncFromCloud() {
+const API_BASE = 'https://46.225.83.168.nip.io';
+
+async function syncFromCloud(silent = false) {
   const btn = document.getElementById('btn-sync');
   if (btn) { btn.textContent = '🔄 Syncing…'; btn.disabled = true; }
   const siteId = AUTH.getSiteId();
   if (!siteId) {
-    UI.toast('Not logged in — please refresh', 'error');
+    if (!silent) UI.toast('Not logged in — please refresh', 'error');
     if (btn) { btn.textContent = '🔄 Sync'; btn.disabled = false; }
     return;
   }
-  if (typeof FIREBASE_URL === 'undefined' || !FIREBASE_URL) {
-    UI.toast('API server not configured', 'error');
-    if (btn) { btn.textContent = '🔄 Sync'; btn.disabled = false; }
-    return;
+
+  try {
+    // Pull submissions
+    const subsRes  = await fetch(API_BASE + '/api/submissions?site_id=' + siteId);
+    const subs     = await subsRes.json();
+
+    // Pull defects
+    const defRes   = await fetch(API_BASE + '/api/defects?site_id=' + siteId);
+    const defs     = await defRes.json();
+
+    // Pull notifications
+    const notifRes = await fetch(API_BASE + '/api/notifications?site_id=' + siteId);
+    const notifs   = await notifRes.json();
+
+    // Pull plants
+    const plantsRes = await fetch(API_BASE + '/api/plants?site_id=' + siteId);
+    const plants    = await plantsRes.json();
+
+    // Pull users
+    const usersRes  = await fetch(API_BASE + '/api/users');
+    const users     = await usersRes.json();
+
+    // Merge into localStorage — server wins for submissions/defects
+    if (Array.isArray(subs) && subs.length > 0) {
+      const local = DB.getSubmissions();
+      const merged = [...subs];
+      // Keep local ones not yet on server
+      local.forEach(ls => { if (!merged.find(s => s.id === ls.id)) merged.push(ls); });
+      merged.sort((a,b) => (b.submittedAt||'').localeCompare(a.submittedAt||''));
+      DB.sset('submissions', merged);
+    }
+
+    if (Array.isArray(defs) && defs.length > 0) {
+      const local = DB.getDefects();
+      const merged = [...defs];
+      local.forEach(ld => { if (!merged.find(d => d.id === ld.id)) merged.push(ld); });
+      DB.sset('defects', merged);
+    }
+
+    if (Array.isArray(notifs) && notifs.length > 0) {
+      const local = DB.getNotifications ? DB.getNotifications() : [];
+      const merged = [...notifs];
+      local.forEach(ln => { if (!merged.find(n => n.id === ln.id)) merged.push(ln); });
+      DB.sset('notifications', merged);
+    }
+
+    if (Array.isArray(plants) && plants.length > 0) {
+      // Parse data field if needed
+      const parsed = plants.map(p => {
+        try { return typeof p.data === 'string' ? {...JSON.parse(p.data), ...p} : p; } catch(e) { return p; }
+      });
+      DB.sset('plants', parsed);
+    }
+
+    if (Array.isArray(users) && users.length > 0) {
+      DB.sset('users', users);
+    }
+
+    const newSubs = Array.isArray(subs) ? subs.length : 0;
+    if (!silent) UI.toast(`Synced — ${newSubs} submission(s) from server`, 'success');
+
+  } catch(e) {
+    if (!silent) UI.toast('Sync failed — check connection', 'error');
+    console.error('Sync error:', e);
   }
-  FBSYNC.init(FIREBASE_URL, siteId);
-  const result = await FBSYNC.pullAll(siteId);
-  const subCount = Array.isArray(result.subs) ? result.subs.length : 0;
-  UI.toast(subCount > 0 ? `Synced — ${subCount} submission(s)` : 'Already up to date', 'success');
+
   updateNotifBadge();
   // Re-render current page
   const active = document.querySelector('.nav-link.active')?.dataset?.page;
