@@ -536,8 +536,8 @@ document.addEventListener('DOMContentLoaded', () => {
         remoteSites.forEach(s => AUTH.saveSite(s));
         const freshSites = AUTH.getSites().filter(s => s.active !== false);
         if (freshSites.length) {
-          if (freshSites.length === 1) { selectedSite = freshSites[0]; goStep(2); return; }
-          goStep(1); return;
+          if (freshSites.length === 1) { selectedSite = freshSites[0]; setTimeout(() => goStep(2), 100); return; }
+          setTimeout(() => goStep(1), 100); return;
         }
       }
     } catch(e) { console.warn('Server pull failed:', e); }
