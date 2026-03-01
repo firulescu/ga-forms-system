@@ -492,6 +492,133 @@ const DB = {
         ]
       },
 
+      // ── GA2-LADD: Ladder Inspection (HSA S.I. 299/2007 compliant) ──────
+      {
+        id:'GA2-LADD', name:'GA2 — Ladder Pre-Use Inspection',
+        description:'Pre-use inspection for all ladders (step, extension, roof) — required under S.I. 299 of 2007 and HSA guidance. Records must be kept on site for 5 years.',
+        color:'#E67E22',
+        sections:[
+          { title:'Ladder Identification & Suitability', items:[
+            'Ladder is correct type and class (EN131 / BS2037) for the task — load rating visible and adequate',
+            'Ladder length is suitable — top 3 rungs not used as standing position on leaning ladder',
+            'Ladder is not painted — paint can conceal cracks and defects',
+            'Manufacturer label / inspection tag present and in date',
+            'Ladder has not been previously involved in a fall, impact or overload incident',
+          ]},
+          { title:'Stiles & Structure', items:[
+            'Both stiles straight and undamaged — no bends, dents, cracks or corrosion',
+            'No repairs with tape, wire or unauthorised fixings',
+            'Stile feet (rubber / non-slip) present, secure and not worn smooth',
+            'For extension ladders — guide brackets and stops in good condition, ropes intact',
+          ]},
+          { title:'Rungs / Steps / Treads', items:[
+            'All rungs / steps present — none missing, bent, cracked or loose',
+            'Rungs free of slippery substances (oil, mud, paint)',
+            'Anti-slip surface on rungs intact — not worn smooth',
+            'For stepladders — all steps level and secure, no creak or movement underfoot',
+          ]},
+          { title:'Locking & Stability Mechanisms', items:[
+            'Spreader bar / locking stay opens fully and locks positively on stepladder',
+            'Locking dogs / pawls on extension ladder engage correctly on both sides',
+            'No loose or missing rivets, bolts or fixings on any joint or hinge',
+            'Platform top (if fitted) undamaged, secure and clean',
+          ]},
+          { title:'Erection & Safe Use Check', items:[
+            'Ladder erected on firm, level, stable surface — sole board used where ground is soft',
+            'Leaning ladder at correct angle — 1:4 (75°) — one out for every four up',
+            'Top of ladder secured or tied — extends 1m above landing point or handhold provided',
+            'Ladder footed by second person where tying is not possible',
+            'Operator competent and fit — no condition affecting balance or grip',
+          ]},
+        ]
+      },
+
+      // ── GA2-TOWER: Aluminium Access Tower (PASMA / S.I. 299/2007) ────────
+      {
+        id:'GA2-TOWER', name:'GA2 — Aluminium Access Tower Inspection',
+        description:'Post-erection and weekly inspection for mobile aluminium access towers — PASMA guidelines and S.I. 299 of 2007. Re-inspect at minimum every 7 days while on site.',
+        color:'#8E44AD',
+        sections:[
+          { title:'Erection & Documentation', items:[
+            'Tower erected by PASMA-trained operative — training card available if requested',
+            'Manufacturer instruction manual present on site during erection',
+            'Tower erected to correct height for intended task — maximum height per manufacturer not exceeded',
+            'Wind speed checked — work halted if wind exceeds 17mph (Beaufort 5)',
+          ]},
+          { title:'Base & Ground Conditions', items:[
+            'Ground is firm, level and capable of supporting tower loads',
+            'All four castors in full contact with ground — none raised or suspended',
+            'All castor wheel brakes locked and cannot be released accidentally',
+            'Adjustable legs set correctly — NOT used to gain additional working height',
+            'Outriggers / stabilisers fitted and extended as per manufacturer instructions (if required by height/width ratio)',
+          ]},
+          { title:'Tower Structure', items:[
+            'Tower is plumb and level — checked with spirit level',
+            'All frames correct size and type, in correct position, locking devices fully engaged',
+            'All horizontal and diagonal braces positioned and secured as per instruction manual',
+            'No damaged, bent, cracked or missing components — all tubes straight',
+            'All locking pins / spring buttons fully engaged and visible',
+          ]},
+          { title:'Working Platform', items:[
+            'Platform boards correctly positioned — no gaps, all trapdoor openings over built-in access',
+            'Wind locks (platform to frame) all engaged',
+            'Platform free of loose materials, tools and trip hazards',
+            'Platform surface undamaged — no cracked, split or missing sections',
+          ]},
+          { title:'Guardrails & Toe Boards', items:[
+            'Full-height guardrails (950mm min) fitted on all open sides',
+            'Intermediate guardrails fitted — no gap greater than 470mm',
+            'Toe boards (minimum 150mm) fitted on all open sides',
+            'All guardrail couplings tight — no movement when pushed',
+          ]},
+          { title:'Access', items:[
+            'Access hatch closes correctly after use — not left open during work',
+            'Internal ladder or stairway access provided — climbing up outside of tower frame prohibited',
+            'Access to platform is safe — no overreaching required to enter',
+          ]},
+        ]
+      },
+
+      // ── GA2-PODIUM: Podium Ladder Inspection ─────────────────────────────
+      {
+        id:'GA2-PODIUM', name:'GA2 — Podium Ladder / Steps Inspection',
+        description:'Pre-use inspection for podium ladders, podium steps and low-level platforms — S.I. 299 of 2007. Pre-use check required every day before use.',
+        color:'#16A085',
+        sections:[
+          { title:'Frame & Structure', items:[
+            'Frame undamaged — no bent, cracked or corroded components',
+            'All welds and joints intact — no visible cracks',
+            'No unauthorised repairs, patches or tape',
+            'Manufacturer label and maximum load rating clearly visible',
+          ]},
+          { title:'Steps & Platform', items:[
+            'All steps present, level and secure — no movement underfoot',
+            'Step surfaces clean and non-slip surface intact — no wear or contamination',
+            'Platform deck undamaged — no cracks, holes or deformation',
+            'Platform deck surface non-slip and free of contamination',
+          ]},
+          { title:'Guardrails & Gate', items:[
+            'Full perimeter guardrail fitted and secure — no loose connections',
+            'Entry gate / chain closes and latches correctly — cannot be accidentally released during use',
+            'Gate opens inward only (to prevent opening over edge)',
+            'Toe boards or upstand around platform base intact',
+          ]},
+          { title:'Wheels & Locking', items:[
+            'All castor wheels present, undamaged and rotate freely',
+            'All wheel brakes / locks functional — lock positively and hold unit stationary',
+            'Unit does not move when brake is applied and weight applied to platform',
+            'Adjustable feet (if fitted) extend and lock correctly',
+          ]},
+          { title:'Safe Use Check', items:[
+            'Podium positioned on firm, level surface',
+            'All wheels locked before anyone ascends',
+            'Unit is not moved while anyone is on the platform',
+            'Maximum working load (persons + tools) not exceeded',
+            'Used only indoors or in sheltered conditions — not used in high winds',
+          ]},
+        ]
+      },
+
       // ── GA3: Hazard Assessment — generic (applies to any plant) ──
       {
         id:'GA3', name:'GA3 — Plant Hazard Assessment',
