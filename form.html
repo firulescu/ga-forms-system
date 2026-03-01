@@ -1217,7 +1217,11 @@ function initAfterLogin() {
         document.getElementById('btn-back-select').style.display = '';
         renderFormOptions();
         if (urlForm) { selectForm(urlForm); }
+        showScreen('select');
       }
+    } else {
+      showScreen('select');
+      renderPlantList();
     }
   }
 

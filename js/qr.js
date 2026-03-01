@@ -72,6 +72,7 @@ const QRGen = {
 
       if (qrDataUrl) {
         document.body.removeChild(tmp);
+        const siteName = (typeof AUTH !== 'undefined' && siteId) ? (AUTH.getSite(siteId)?.name || siteId) : siteId;
         const win = window.open('', '_blank');
         win.document.write(`<!DOCTYPE html><html><head>
           <title>QR Label - ${plant.name}</title>
