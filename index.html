@@ -1192,10 +1192,12 @@ function viewSubmission(id) {
     template.sections.forEach(sec => {
       sectionsHTML += `<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:700;color:var(--accent);letter-spacing:1px;margin-bottom:8px;">${sec.title.toUpperCase()}</div>`;
       sec.items.forEach(item => {
-        const ans = s.answers[answerIdx] || false;
+        const ans = s.answers[answerIdx] || 0;
+        const ansColor = ans === 2 ? '#FF4757' : ans === 3 ? '#C9A84C' : ans === 1 ? '#00C896' : 'var(--muted)';
+        const ansIcon  = ans === 2 ? '✕' : ans === 3 ? 'N/A' : ans === 1 ? '✓' : '–';
         sectionsHTML += `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;">
-          <span style="color:${ans?'#00C896':'#FF4757'};font-size:16px;flex-shrink:0;">${ans?'✓':'✕'}</span>
-          <span style="color:${ans?'var(--text)':'var(--muted)'};">${item}</span>
+          <span style="color:${ansColor};font-size:16px;flex-shrink:0;">${ansIcon}</span>
+          <span style="color:${ans === 2 ? 'var(--text)' : ans === 1 ? 'var(--text)' : 'var(--muted)'};">${item}</span>
         </div>`;
         answerIdx++;
       });
