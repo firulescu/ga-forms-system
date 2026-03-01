@@ -1348,19 +1348,22 @@ function printSubmission(id) {
   const scoreColor = score >= 90 ? '#00C896' : score >= 70 ? '#C9A84C' : '#FF4757';
   const status = score >= 90 ? 'PASS' : score >= 70 ? 'PARTIAL' : 'FAIL';
 
-  // Build checklist rows
+  // Build checklist rows — answers is a flat array [1=pass,2=fail,3=N/A]
+  const flatAnswers = Array.isArray(s.answers) ? s.answers : [];
   let checklistHTML = '';
+  let ansIdx = 0;
   if (template && template.sections) {
-    template.sections.forEach((sec, si) => {
+    template.sections.forEach(sec => {
       checklistHTML += `<tr style="background:#f0f0f0;"><td colspan="4" style="padding:8px 12px;font-weight:700;font-size:12px;letter-spacing:1px;">${sec.title}</td></tr>`;
-      sec.items.forEach((item, ii) => {
-        const ans = (sections[si] || [])[ii];
+      sec.items.forEach(item => {
+        const ans = flatAnswers[ansIdx++] || 0;
         const pass = ans === 1, fail = ans === 2, na = ans === 3;
-        checklistHTML += `<tr>
+        const rowBg = fail ? '#fff5f5' : '';
+        checklistHTML += `<tr style="background:${rowBg}">
           <td style="padding:7px 12px;font-size:11px;border-bottom:1px solid #eee;">${item}</td>
-          <td style="text-align:center;border-bottom:1px solid #eee;">${pass ? '✅' : '☐'}</td>
-          <td style="text-align:center;border-bottom:1px solid #eee;">${fail ? '❌' : '☐'}</td>
-          <td style="text-align:center;border-bottom:1px solid #eee;">${na ? 'N/A' : '☐'}</td>
+          <td style="text-align:center;border-bottom:1px solid #eee;color:#00C896;font-size:14px;">${pass ? '✔' : ''}</td>
+          <td style="text-align:center;border-bottom:1px solid #eee;color:#FF4757;font-size:14px;">${fail ? '✘' : ''}</td>
+          <td style="text-align:center;border-bottom:1px solid #eee;color:#888;font-size:11px;">${na ? 'N/A' : ''}</td>
         </tr>`;
       });
     });
