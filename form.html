@@ -316,6 +316,23 @@
 </div>
 
 <!-- SCREEN: MY SUBMISSIONS HISTORY -->
+<div id="screen-status" style="display:none;">
+  <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;text-align:center;background:var(--bg);">
+    <div id="status-icon" style="font-size:100px;line-height:1;margin-bottom:24px;animation:statusPop 0.5s cubic-bezier(0.34,1.56,0.64,1) both;">✅</div>
+    <div id="status-title" style="font-size:28px;font-weight:900;color:#00C896;font-family:'Space Mono',monospace;margin-bottom:8px;letter-spacing:-1px;">INSPECTED TODAY</div>
+    <div id="status-plant" style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:20px;"></div>
+    <div id="status-cards" style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:360px;margin-bottom:28px;"></div>
+    <div id="status-next" style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;margin-bottom:32px;letter-spacing:1px;"></div>
+    <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:360px;">
+      <div id="status-pending-btn" style="display:none;">
+        <button class="btn-full btn-primary" onclick="proceedFromStatus()" id="status-fill-btn">Fill Outstanding Form</button>
+      </div>
+      <button class="btn-full" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border);padding:14px;border-radius:12px;font-size:13px;cursor:pointer;" onclick="showScreen('select')">View All Forms</button>
+    </div>
+  </div>
+</div>
+<style>@keyframes statusPop { from { transform:scale(0.3);opacity:0; } to { transform:scale(1);opacity:1; } }</style>
+
 <div id="screen-history" style="display:none;">
   <div class="header">
     <div class="header-info">
@@ -473,7 +490,7 @@ const urlForm = params.get('form');
 // SCREEN MANAGEMENT
 // ============================================================
 function showScreen(name) {
-  ['select','operator','checklist','success','history'].forEach(s => {
+  ['select','operator','checklist','success','history','status'].forEach(s => {
     const el = document.getElementById('screen-' + s);
     if (el) el.style.display = s === name ? '' : 'none';
   });
@@ -1089,6 +1106,80 @@ function initAfterLogin() {
   DB.getFormTemplates();
   renderPlantList();
 
+  // STATUS CHECK on QR scan
+  function checkPlantStatus(plantId, plant) {
+    if (!plantId || !plant) return false;
+    const today = new Date().toISOString().split('T')[0];
+    const allSubs = JSON.parse(localStorage.getItem('submissions')||'[]');
+    const isTower = (plant.formType||'') === 'GA2-TOWER';
+    let requiredSubs;
+    if (isTower) {
+      const weekAgo = new Date(Date.now()-7*24*60*60*1000).toISOString().split('T')[0];
+      requiredSubs = allSubs.filter(s=>s.plantId===plantId&&s.formId==='GA2-TOWER'&&(s.date||s.submittedAt||'')>=weekAgo);
+    } else {
+      requiredSubs = allSubs.filter(s=>s.plantId===plantId&&(s.date||s.submittedAt||'').startsWith(today));
+    }
+    if (requiredSubs.length === 0) return false;
+
+    const templates = DB.getFormTemplates();
+    const plantForms = templates.filter(t => !plant.formType || t.id === plant.formType || !t.id.startsWith('GA2'));
+    const ga2Forms = plantForms.filter(t=>t.id.startsWith('GA2'));
+    const filledIds = new Set(requiredSubs.map(s=>s.formId));
+    const pendingForms = ga2Forms.filter(t=>!filledIds.has(t.id));
+
+    const cards = ga2Forms.map(t=>{
+      const sub = requiredSubs.find(s=>s.formId===t.id);
+      const done = !!sub;
+      const score = sub ? Math.round(sub.score||0) : null;
+      const sc = score>=90?'#00C896':score>=70?'#C9A84C':'#FF4757';
+      const time = sub ? new Date(sub.submittedAt||sub.date||'').toLocaleTimeString('en-IE',{hour:'2-digit',minute:'2-digit'}) : '';
+      return '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:12px;background:var(--surface);border:2px solid '+(done?'#00C89633':'var(--border)')+';">'+
+        '<span style="font-size:24px;">'+(done?'✅':'⏳')+'</span>'+
+        '<div style="flex:1;text-align:left;"><div style="font-size:13px;font-weight:700;color:var(--text);">'+t.id+'</div>'+
+        '<div style="font-size:11px;color:var(--muted);">'+(done?(sub.operatorName||'Unknown')+' · '+time:'Not yet completed')+'</div></div>'+
+        (done&&score!==null?'<div style="font-size:16px;font-weight:900;font-family:Space Mono,monospace;color:'+sc+';">'+score+'%</div>':'')+
+        '</div>';
+    }).join('');
+
+    const allDone = pendingForms.length === 0;
+    let nextDue = '';
+    if (isTower) {
+      const last = requiredSubs.sort((a,b)=>(b.submittedAt||b.date||'').localeCompare(a.submittedAt||a.date||''))[0];
+      if (last) { const d=new Date(new Date(last.submittedAt||last.date||'').getTime()+7*24*60*60*1000); nextDue='NEXT INSPECTION DUE: '+d.toLocaleDateString('en-IE',{weekday:'short',day:'2-digit',month:'short',year:'numeric'}).toUpperCase(); }
+    } else {
+      const tom=new Date(); tom.setDate(tom.getDate()+1);
+      nextDue='NEXT INSPECTION DUE: '+tom.toLocaleDateString('en-IE',{weekday:'short',day:'2-digit',month:'short',year:'numeric'}).toUpperCase();
+    }
+
+    document.getElementById('status-icon').textContent = allDone?'✅':'⚠️';
+    document.getElementById('status-title').textContent = allDone?'INSPECTED TODAY':'PARTIALLY DONE';
+    document.getElementById('status-title').style.color = allDone?'#00C896':'#C9A84C';
+    document.getElementById('status-plant').textContent = (plant.photo||'') + ' ' + (plant.name||plantId);
+    document.getElementById('status-cards').innerHTML = cards;
+    document.getElementById('status-next').textContent = nextDue;
+    if (!allDone && pendingForms.length>0) {
+      window._pendingFormId = pendingForms[0].id;
+      document.getElementById('status-fill-btn').textContent = 'Fill ' + pendingForms[0].id + ' Now';
+      document.getElementById('status-pending-btn').style.display = '';
+    } else {
+      document.getElementById('status-pending-btn').style.display = 'none';
+    }
+    showScreen('status');
+    return true;
+  }
+
+  function proceedFromStatus() {
+    if (window._pendingFormId && state.plant) {
+      state.step='form';
+      document.getElementById('plant-step').style.display='none';
+      document.getElementById('form-step').style.display='';
+      document.getElementById('btn-back-select').style.display='';
+      renderFormOptions();
+      selectForm(window._pendingFormId);
+      showScreen('select');
+    } else { showScreen('select'); }
+  }
+
   // Handle URL params
   if (urlPlant) {
     state.plantId = urlPlant;
@@ -1107,12 +1198,15 @@ function initAfterLogin() {
     }
 
     if (state.plant) {
-      state.step = 'form';
-      document.getElementById('plant-step').style.display = 'none';
-      document.getElementById('form-step').style.display = '';
-      document.getElementById('btn-back-select').style.display = '';
-      renderFormOptions();
-      if (urlForm) { selectForm(urlForm); }
+      const statusShown = AUTH.isLoggedIn() ? checkPlantStatus(urlPlant, state.plant) : false;
+      if (!statusShown) {
+        state.step = 'form';
+        document.getElementById('plant-step').style.display = 'none';
+        document.getElementById('form-step').style.display = '';
+        document.getElementById('btn-back-select').style.display = '';
+        renderFormOptions();
+        if (urlForm) { selectForm(urlForm); }
+      }
     }
   }
 
