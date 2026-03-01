@@ -1092,7 +1092,7 @@ function openAddPlantModal(existing = null) {
           ? `<span style="font-size:24px;">${selectedType.icon}</span><div><div style="font-size:13px;font-weight:700;">${selectedType.label}</div><div style="font-size:10px;color:var(--muted);">${selectedType.hint}</div></div>`
           : `<span style="color:var(--muted);font-size:11px;font-family:'Space Mono',monospace;">👆 Pick a type from the library below</span>`}
       </div>
-      <div style="max-height:320px;overflow-y:auto;padding-right:2px;">${gridHTML}</div>
+      <div id="mp-plant-grid" style="max-height:320px;overflow-y:auto;padding-right:2px;">${gridHTML}</div>
     </div>`,
     `<button onclick="UI.closeModal()" style="${UI.btnStyle('secondary')}">Cancel</button>
      <button onclick="savePlant('${plant.id}')" style="${UI.btnStyle('primary')}">${existing ? 'Save Changes' : 'Add Plant'}</button>`
@@ -1115,6 +1115,22 @@ function selectPlantType(label, formType, icon) {
 }
 
 function updatePlantIcon() {}
+
+function filterPlantTypes(query) {
+  const q = query.toLowerCase().trim();
+  PLANT_TYPES.forEach(p => {
+    const el = document.getElementById('pt'+p.label.replace(/[^a-z0-9]/gi,''));
+    if (!el) return;
+    const match = !q || p.label.toLowerCase().includes(q) || p.category.toLowerCase().includes(q) || p.hint.toLowerCase().includes(q);
+    el.style.display = match ? '' : 'none';
+  });
+  // Hide category headers if all items hidden
+  document.querySelectorAll('#mp-plant-grid > div').forEach(catDiv => {
+    const tiles = catDiv.querySelectorAll('[id^="pt"]');
+    const anyVisible = [...tiles].some(t => t.style.display !== 'none');
+    catDiv.style.display = anyVisible ? '' : 'none';
+  });
+}
 
 function savePlant(existingId) {
   const name     = document.getElementById('mp-name').value.trim();
