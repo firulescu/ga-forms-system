@@ -39,6 +39,18 @@ const DB = {
     return plants;
   },
   getPlant(id) { return this.getPlants().find(p => p.id === id); },
+  _apiBase: 'https://46.225.83.168.nip.io',
+
+  _syncPlant(plant) {
+    try { fetch(this._apiBase+'/api/plants', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(plant) }).catch(()=>{}); } catch(e) {}
+  },
+  _syncAllPlants() {
+    try { fetch(this._apiBase+'/api/plants/sync', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(this.getPlants()) }).catch(()=>{}); } catch(e) {}
+  },
+  _deletePlantRemote(id) {
+    try { fetch(this._apiBase+'/api/plants/'+id, { method:'DELETE' }).catch(()=>{}); } catch(e) {}
+  },
+
   addPlant(plant) {
     const plants = this.getPlants();
     const maxNum = plants.reduce((max, p) => {
@@ -49,14 +61,18 @@ const DB = {
     plant.lastInspected = null;
     plants.push(plant);
     this._savePlants(plants);
+    this._syncPlant(plant);
     return plant;
   },
   updatePlant(id, data) {
     const plants = this.getPlants();
     const i = plants.findIndex(p => p.id === id);
-    if (i >= 0) { plants[i] = { ...plants[i], ...data }; this._savePlants(plants); }
+    if (i >= 0) { plants[i] = { ...plants[i], ...data }; this._savePlants(plants); this._syncPlant(plants[i]); }
   },
-  deletePlant(id) { this._savePlants(this.getPlants().filter(p => p.id !== id)); },
+  deletePlant(id) {
+    this._savePlants(this.getPlants().filter(p => p.id !== id));
+    this._deletePlantRemote(id);
+  },
 
   // ============================================================
   // GA1 — Plant Registration / Static Safety File
