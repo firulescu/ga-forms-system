@@ -1284,7 +1284,8 @@ function renderSubmissionTable(subs) {
         </div>
       </td>
       <td>${UI.badge(status, statusColor)}</td>
-      <td><button class="btn btn-secondary btn-sm" onclick="viewSubmission('${s.id}')">👁️ View</button></td>
+      <td><button class="btn btn-secondary btn-sm" onclick="viewSubmission('${s.id}')">👁️ View</button>
+              <button class="btn btn-sm btn-secondary" onclick="printSubmission('${s.id}')" title="Print PDF report">🖨️</button></td>
     </tr>`;
   }).join('');
 }
@@ -1336,6 +1337,97 @@ function viewSubmission(id) {
     ${s.notes ? `<div style="background:rgba(255,183,0,0.1);border:1px solid rgba(255,183,0,0.3);border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px;"><strong>📝 Notes:</strong> ${s.notes}</div>` : ''}
     <div style="max-height:300px;overflow-y:auto;">${sectionsHTML}</div>`
   );
+}
+
+function printSubmission(id) {
+  const s = DB.getSubmissions().find(x => x.id === id);
+  if (!s) return;
+  const template = DB.getFormTemplate(s.formId);
+  const sections = s.answers || [];
+  const score = Math.round(s.score || 0);
+  const scoreColor = score >= 90 ? '#00C896' : score >= 70 ? '#C9A84C' : '#FF4757';
+  const status = score >= 90 ? 'PASS' : score >= 70 ? 'PARTIAL' : 'FAIL';
+
+  // Build checklist rows
+  let checklistHTML = '';
+  if (template && template.sections) {
+    template.sections.forEach((sec, si) => {
+      checklistHTML += `<tr style="background:#f0f0f0;"><td colspan="4" style="padding:8px 12px;font-weight:700;font-size:12px;letter-spacing:1px;">${sec.title}</td></tr>`;
+      sec.items.forEach((item, ii) => {
+        const ans = (sections[si] || [])[ii];
+        const pass = ans === 1, fail = ans === 2, na = ans === 3;
+        checklistHTML += `<tr>
+          <td style="padding:7px 12px;font-size:11px;border-bottom:1px solid #eee;">${item}</td>
+          <td style="text-align:center;border-bottom:1px solid #eee;">${pass ? '✅' : '☐'}</td>
+          <td style="text-align:center;border-bottom:1px solid #eee;">${fail ? '❌' : '☐'}</td>
+          <td style="text-align:center;border-bottom:1px solid #eee;">${na ? 'N/A' : '☐'}</td>
+        </tr>`;
+      });
+    });
+  }
+
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html><html><head>
+    <title>Inspection Report — ${s.plantName || s.plantId}</title>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: 'Space Mono', monospace; background: white; color: #0A0E1A; padding: 32px; font-size: 12px; }
+      .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #0A0E1A; padding-bottom: 16px; margin-bottom: 20px; }
+      .company { font-size: 18px; font-weight: 700; letter-spacing: 2px; }
+      .sub-title { font-size: 11px; color: #666; margin-top: 2px; }
+      .score-badge { padding: 8px 20px; border-radius: 8px; font-size: 22px; font-weight: 700; color: white; background: ${scoreColor}; }
+      .meta-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+      .meta-box { border: 1px solid #ddd; border-radius: 8px; padding: 10px 14px; }
+      .meta-label { font-size: 9px; letter-spacing: 2px; color: #888; margin-bottom: 4px; }
+      .meta-value { font-size: 13px; font-weight: 700; }
+      table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+      th { background: #0A0E1A; color: white; padding: 8px 12px; font-size: 10px; letter-spacing: 1px; text-align: left; }
+      th:not(:first-child) { text-align: center; width: 60px; }
+      .notes { margin-top: 20px; border: 1px solid #ddd; border-radius: 8px; padding: 14px; }
+      .sig-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px; }
+      .sig-box { border-top: 2px solid #0A0E1A; padding-top: 8px; font-size: 10px; color: #666; }
+      .footer { margin-top: 24px; padding-top: 12px; border-top: 1px solid #ddd; font-size: 9px; color: #aaa; text-align: center; }
+      @media print { body { padding: 16px; } }
+    </style>
+  </head><body>
+    <div class="header">
+      <div>
+        <div class="company">ROBERT QUINN LTD</div>
+        <div class="sub-title">GA FORMS · SAFETY MANAGEMENT SYSTEM</div>
+        <div style="margin-top:8px;font-size:13px;font-weight:700;">${s.formId} — ${template ? template.name : s.formId}</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="score-badge">${score}% ${status}</div>
+        <div style="font-size:10px;color:#666;margin-top:6px;">${new Date(s.submittedAt).toLocaleDateString('en-IE',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
+      </div>
+    </div>
+    <div class="meta-grid">
+      <div class="meta-box"><div class="meta-label">PLANT / EQUIPMENT</div><div class="meta-value">${s.plantName || s.plantId}</div></div>
+      <div class="meta-box"><div class="meta-label">PLANT ID</div><div class="meta-value">${s.plantId}</div></div>
+      <div class="meta-box"><div class="meta-label">LOCATION</div><div class="meta-value">${s.location || '—'}</div></div>
+      <div class="meta-box"><div class="meta-label">OPERATOR</div><div class="meta-value">${s.operatorName || '—'}</div></div>
+      <div class="meta-box"><div class="meta-label">COMPANY</div><div class="meta-value">${s.company || 'Robert Quinn Ltd'}</div></div>
+      <div class="meta-box"><div class="meta-label">SUBMISSION ID</div><div class="meta-value" style="font-size:10px;">${s.id}</div></div>
+    </div>
+    <table>
+      <thead><tr>
+        <th>INSPECTION ITEM</th>
+        <th>PASS</th>
+        <th>FAIL</th>
+        <th>N/A</th>
+      </tr></thead>
+      <tbody>${checklistHTML}</tbody>
+    </table>
+    ${s.notes ? `<div class="notes"><div class="meta-label" style="margin-bottom:6px;">NOTES / DEFECTS</div>${s.notes}</div>` : ''}
+    <div class="sig-row">
+      <div class="sig-box">OPERATOR SIGNATURE &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DATE: ${new Date(s.submittedAt).toLocaleDateString('en-IE')}</div>
+      <div class="sig-box">SUPERVISOR SIGNATURE &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DATE: ___________</div>
+    </div>
+    <div class="footer">© 2026 Robert Quinn Ltd · All rights reserved · firulescum@gmail.com · Generated ${new Date().toLocaleString('en-IE')}</div>
+    <script>setTimeout(() => window.print(), 600);<\/script>
+  </body></html>`);
+  win.document.close();
 }
 
 // ============================================================
