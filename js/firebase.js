@@ -40,7 +40,22 @@ const FBSYNC = {
         fetch(this._base + "/api/notifications?site_id=" + sid).then(r=>r.json()),
         fetch(this._base + "/api/defects?site_id=" + sid).then(r=>r.json())
       ]);
-      if (Array.isArray(subs)) DB.sset("submissions", subs);
+      if (Array.isArray(subs)) {
+        DB.sset("submissions", subs);
+        subs.forEach(sub => {
+          if (sub.plantId && sub.submittedAt) {
+            const plants = DB.sget('plants') || [];
+            const i = plants.findIndex(p => p.id === sub.plantId);
+            if (i >= 0) {
+              const existing = plants[i].lastInspected;
+              if (!existing || sub.submittedAt > existing) {
+                plants[i].lastInspected = sub.submittedAt;
+              }
+              DB.sset('plants', plants);
+            }
+          }
+        });
+      }
       if (Array.isArray(notifs)) DB.sset("notifications", notifs);
       if (Array.isArray(defects)) DB.sset("defects", defects);
       return { subs, notifs, defects };
