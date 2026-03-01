@@ -715,6 +715,7 @@ async function submitForm() {
 
   const safeSignature = (typeof sigData !== 'undefined') ? sigData : null;
   const sub = DB.addSubmission({
+    siteId: AUTH.getSiteId() || params.get('site') || '',
     plantId: state.plantId,
     formId: state.formId,
     operatorName: name,
@@ -756,6 +757,7 @@ async function submitForm() {
 
   // Notification
   const notif = {
+    siteId: AUTH.getSiteId() || params.get('site') || '',
     title: failed > 0 ? `⚠️ Defects Found — ${state.plant.name}` : `✅ ${state.formId} Completed — ${state.plant.name}`,
     message: failed > 0
       ? `${name} reported ${failed} failed item(s) on ${state.formId}. Logged to Defect Tracker.`
@@ -766,9 +768,9 @@ async function submitForm() {
   };
   DB.addNotification(notif);
 
-  // Push to Firebase — queue offline if no connection
+  // Push to API server — queue offline if no connection
   if (typeof FIREBASE_URL !== 'undefined' && FIREBASE_URL) {
-    const siteId = AUTH.getSiteId();
+    const siteId = AUTH.getSiteId() || params.get('site') || '';
     if (siteId) {
       FBSYNC.init(FIREBASE_URL, siteId);
       const notifObj = { ...notif, id: 'N-' + Date.now(), createdAt: sub.submittedAt, read: false };
@@ -899,12 +901,17 @@ function loSubmit() {
     return;
   }
 
-  // Try site operator PIN (also accept QR-embedded tok= PIN)
-  const tokPin = (() => { try { const d = atob(params.get('tok')||''); return d.startsWith('op:') ? d.split(':')[1] : null; } catch(e) { return null; } })();
+  // Accept PIN if it matches localStorage OR the QR-embedded tok= token
   if (AUTH.isOperatorPin(loPin, loSiteId) || (urlTokPin && loPin === urlTokPin)) {
     AUTH.setOperatorSession(name, loSiteId);
     localStorage.setItem('ga_last_op_name', name);
     localStorage.setItem('ga_last_site', loSiteId);
+    // Seed site data locally so DB calls work after login
+    const existingSite = AUTH.getSite(loSiteId);
+    if (!existingSite) {
+      const sn = params.get('sn') || loSiteId;
+      AUTH.saveSite({ id: loSiteId, name: sn, operatorPin: loPin, active: true });
+    }
     document.getElementById('login-overlay').style.display = 'none';
     initAfterLogin();
     return;

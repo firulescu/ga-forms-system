@@ -82,7 +82,18 @@ const QRGen = {
             colorDark: '#0A0E1A', colorLight: '#ffffff',
             correctLevel: QRCode.CorrectLevel.H
           });
-          setTimeout(() => window.print(), 1800);
+          // Wait for QR image to actually render before printing
+          function waitAndPrint(tries) {
+            const img = document.querySelector('#qr img');
+            if (img && img.complete && img.naturalWidth > 0) {
+              window.print();
+            } else if (tries > 0) {
+              setTimeout(() => waitAndPrint(tries - 1), 200);
+            } else {
+              window.print(); // give up waiting, print anyway
+            }
+          }
+          setTimeout(() => waitAndPrint(10), 500);
         <\/script>
       </body>
       </html>

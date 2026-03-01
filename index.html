@@ -1753,23 +1753,24 @@ async function syncFromCloud() {
   const btn = document.getElementById('btn-sync');
   if (btn) { btn.textContent = '🔄 Syncing…'; btn.disabled = true; }
   const siteId = AUTH.getSiteId();
-  if (!siteId || typeof FIREBASE_URL === 'undefined' || !FIREBASE_URL) {
-    UI.toast('Firebase not configured', 'error');
+  if (!siteId) {
+    UI.toast('Not logged in — please refresh', 'error');
+    if (btn) { btn.textContent = '🔄 Sync'; btn.disabled = false; }
+    return;
+  }
+  if (typeof FIREBASE_URL === 'undefined' || !FIREBASE_URL) {
+    UI.toast('API server not configured', 'error');
     if (btn) { btn.textContent = '🔄 Sync'; btn.disabled = false; }
     return;
   }
   FBSYNC.init(FIREBASE_URL, siteId);
-  const result = await FBSYNC.pullAll();
-  if (result.ok) {
-    const added = (result.submissions || 0) + (result.defects || 0) + (result.notifications || 0);
-    UI.toast(added > 0 ? `Synced — ${result.submissions || 0} new submission(s)` : 'Already up to date', 'success');
-    updateNotifBadge();
-    // Re-render current page
-    const active = document.querySelector('.nav-link.active')?.dataset?.page;
-    if (active) showPage(active);
-  } else {
-    UI.toast('Sync failed — check connection', 'error');
-  }
+  const result = await FBSYNC.pullAll(siteId);
+  const subCount = Array.isArray(result.subs) ? result.subs.length : 0;
+  UI.toast(subCount > 0 ? `Synced — ${subCount} submission(s)` : 'Already up to date', 'success');
+  updateNotifBadge();
+  // Re-render current page
+  const active = document.querySelector('.nav-link.active')?.dataset?.page;
+  if (active) showPage(active);
   if (btn) { btn.textContent = '🔄 Sync'; btn.disabled = false; }
 }
 
@@ -2576,7 +2577,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const siteId = AUTH.getSiteId();
   if (typeof FIREBASE_URL !== 'undefined' && FIREBASE_URL && siteId) {
     FBSYNC.init(FIREBASE_URL, siteId);
-    const result = await FBSYNC.pullAll();
+    const result = await FBSYNC.pullAll(siteId);
     if (result.ok && (result.submissions > 0 || result.defects > 0)) {
       updateNotifBadge();
       const ib = document.getElementById('issues-badge');
