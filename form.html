@@ -1231,8 +1231,10 @@ function initAfterLogin() {
         showScreen('select');
       }
     } else {
-      showScreen('select');
-      renderPlantList();
+      // Plant still not found — redirect to login which will fetch all data from server
+      const returnUrl = encodeURIComponent(window.location.href);
+      window.location.href = 'login.html?return=' + returnUrl;
+      return;
     }
   }
 
