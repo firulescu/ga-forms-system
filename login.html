@@ -539,21 +539,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       remoteSites.forEach(s => AUTH.saveSite(s));
     if (Array.isArray(remoteUsers) && remoteUsers.length > 0)
       DB.sset('users', remoteUsers);
-    // Also fetch plants so QR scan works after login
-    const siteForPlants = siteIdFromQR || (remoteSites[0]?.id || '');
-    const remotePlants = await fetch(apiBase + '/api/plants?site_id=' + siteForPlants).then(r=>r.json()).catch(()=>[]);
-    if (Array.isArray(remotePlants) && remotePlants.length > 0) {
-      const parsed = remotePlants.map(p => {
-        try {
-          const base = typeof p.data==='string' && p.data ? JSON.parse(p.data) : {};
-          return {...base, id:p.id||base.id, name:p.name||base.name, location:p.location||base.location,
-            photo:p.photo||base.photo, formType:p.form_type||p.formType||base.formType,
-            type:p.type||base.type, siteId:p.site_id||base.siteId||''};
-        } catch(e){return p;}
-      });
-      if (siteForPlants) localStorage.setItem(siteForPlants + ':plants', JSON.stringify(parsed));
-      localStorage.setItem('plants', JSON.stringify(parsed));
-    }
   } catch(e) { console.warn('Server pull failed:', e); }
 
   const freshSites = AUTH.getSites().filter(s => s.active !== false);
