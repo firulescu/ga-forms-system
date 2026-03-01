@@ -1238,6 +1238,7 @@ function initAfterLogin() {
 
     if (state.plant) {
       const statusShown = AUTH.isLoggedIn() ? checkPlantStatus(urlPlant, state.plant) : false;
+      if (!AUTH.isLoggedIn()) { document.getElementById("login-overlay").style.display = "flex"; loSiteId = params.get("site") || ""; document.getElementById("lo-step-site").style.display = "none"; document.getElementById("lo-step-pin").style.display = ""; return; }
       if (!statusShown) {
         state.step = 'form';
         document.getElementById('plant-step').style.display = 'none';
