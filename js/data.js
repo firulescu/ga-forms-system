@@ -27,16 +27,9 @@ const DB = {
   getPlants()   { return this.getOrSeed('plants', this.seedPlants); },
   _savePlants(p){ this.sset('plants', p); },
   seedPlants() {
-    const plants = [
-      { id:'PLT-001', name:'Diesel Generator A',  location:'Building 1 - Basement', type:'Generator',       formType:'GA2-GEN',   lastInspected:null, photo:'⚡' },
-      { id:'PLT-002', name:'Air Compressor Unit',  location:'Workshop Bay 2',        type:'Compressor',      formType:'GA2-COMP',  lastInspected:null, photo:'💨' },
-      { id:'PLT-003', name:'Overhead Crane #1',    location:'Main Hall',             type:'Crane',           formType:'GA2-CRANE', lastInspected:null, photo:'🏗️' },
-      { id:'PLT-004', name:'Telehandler TH-07',    location:'Yard',                  type:'Telehandler',     formType:'GA2-TELEH', lastInspected:null, photo:'🚛' },
-      { id:'PLT-005', name:'Excavator EX-05',      location:'South Compound',        type:'Excavator',       formType:'GA2-EXC',   lastInspected:null, photo:'🔵' },
-      { id:'PLT-006', name:'Scissor Lift SL-02',   location:'Yard',                  type:'MEWP',            formType:'GA2-MEWP',  lastInspected:null, photo:'🔼' },
-    ];
-    this.sset('plants', plants);
-    return plants;
+    // No seed data - plants come from server
+    this.sset('plants', []);
+    return [];
   },
   getPlant(id) { return this.getPlants().find(p => p.id === id); },
   _apiBase: 'https://46.225.83.168.nip.io',
