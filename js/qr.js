@@ -83,7 +83,8 @@ const QRGen = {
             .plant-loc { font-size: 11px; color: #888; margin-bottom: 16px; }
             .qr-wrap { display: flex; justify-content: center; margin: 16px 0; }
             .qr-wrap img { width: 200px; height: 200px; border-radius: 8px; }
-            .scan-text { font-size: 10px; color: #aaa; letter-spacing: 2px; margin-top: 12px; }
+            .plant-site { font-size: 11px; color: #555; margin-bottom: 4px; font-weight: 600; }
+          .scan-text { font-size: 10px; color: #aaa; letter-spacing: 2px; margin-top: 12px; }
             @media print { body { background: white; } .label { box-shadow: none; border: 2px solid #000; } }
           </style>
         </head><body>
@@ -91,6 +92,7 @@ const QRGen = {
             <div class="plant-id">${plant.id}</div>
             <div class="plant-name">${plant.photo || ''} ${plant.name}</div>
             <div class="plant-loc">📍 ${plant.location}</div>
+          <div class="plant-site">🏗️ ${siteName}</div>
             <div class="qr-wrap"><img src="${qrDataUrl}" alt="QR Code"></div>
             <div class="scan-text">SCAN TO INSPECT</div>
           </div>
