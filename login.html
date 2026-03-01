@@ -371,7 +371,7 @@ function filterStaff(val) {
     </button>`;
   }).join('');
 }
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('staff-name-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') { const f = document.querySelector('.suggest-btn'); if(f) f.click(); }
   });
@@ -478,14 +478,14 @@ function runSetup() {
   window.location.href = 'index.html';
 }
 ['ss-site','ss-addr','ss-name','ss-pin'].forEach(id => {
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('DOMContentLoaded', async () => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('keydown', e => { if(e.key==='Enter') runSetup(); });
   });
 });
 
 // ── INIT ──────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   DB.getFormTemplates();
   if (AUTH.isLoggedIn()) {
     window.location.href = AUTH.getRole()==='operator' ? 'form.html' : 'index.html';
