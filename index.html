@@ -2033,6 +2033,8 @@ async function syncFromCloud(silent = false) {
         } catch(e) { return p; }
       });
       DB.sset('plants', parsed);
+      // Also save without site prefix so form.html can find plants before login
+      localStorage.setItem('plants', JSON.stringify(parsed));
     }
 
     if (Array.isArray(users) && users.length > 0) {
