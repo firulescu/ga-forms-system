@@ -2032,7 +2032,7 @@ function switchToSite(siteId) {
   const session = AUTH.getSession();
   if (!session) return;
   session.siteId = siteId;
-  localStorage.setItem('ga_session', JSON.stringify(session));
+  sessionStorage.setItem('ga_session', JSON.stringify(session));
   UI.closeModal();
   location.reload();
 }
