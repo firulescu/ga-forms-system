@@ -2869,34 +2869,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   setInterval(() => syncFromCloud(true), 60000);
 });
 
-  // Auto-refresh every 30 seconds — pull latest submissions from Firebase
-  let refreshSeconds = 30;
-  const refreshIndicator = document.getElementById('auto-refresh-indicator');
-  const refreshCountdown = document.getElementById('refresh-countdown');
-  if (typeof FIREBASE_URL !== 'undefined' && FIREBASE_URL) {
-    if (refreshIndicator) refreshIndicator.style.display = '';
-    const refreshTimer = setInterval(async () => {
-      refreshSeconds--;
-      if (refreshCountdown) refreshCountdown.textContent = refreshSeconds;
-      if (refreshSeconds <= 0) {
-        refreshSeconds = 30;
-        if (refreshCountdown) refreshCountdown.textContent = '🔄';
-        const sId = AUTH.getSiteId();
-        if (sId) {
-          FBSYNC.init(FIREBASE_URL, sId);
-          const r = await FBSYNC.pullAll();
-          if (r.ok && r.submissions > 0) {
-            updateNotifBadge();
-            const active = document.querySelector('.nav-link.active')?.dataset?.page;
-            if (active === 'dashboard' || active === 'submissions') showPage(active);
-            UI.toast(`☁️ ${r.submissions} new submission(s) synced`, 'success');
-          }
-        }
-        setTimeout(() => { if (refreshCountdown) refreshCountdown.textContent = '30'; }, 1000);
-      }
-    }, 1000);
-  }
-});
 
 // ============================================================
 // SIDEBAR MOBILE NAV
