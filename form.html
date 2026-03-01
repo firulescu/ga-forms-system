@@ -1066,7 +1066,7 @@ function loadDraft() {
 // ============================================================
 // INIT
 // ============================================================
-function initAfterLogin() {
+async function initAfterLogin() {
   const session = AUTH.getSession();
   const siteId = session?.siteId;
 
@@ -1102,9 +1102,7 @@ function initAfterLogin() {
     }
   }
 
-  DB.getPlants();
   DB.getFormTemplates();
-  renderPlantList();
 
   // STATUS CHECK on QR scan
   function checkPlantStatus(plantId, plant) {
@@ -1188,24 +1186,29 @@ function initAfterLogin() {
     if (!state.plant) {
       // Plant not in localStorage — fetch all plants from server
       try {
-        const siteId = params.get('site') || '';
-        const remote = await fetch('https://46.225.83.168.nip.io/api/plants?site_id=' + siteId).then(r=>r.json()).catch(()=>[]);
+        const remote = await fetch('https://46.225.83.168.nip.io/api/plants').then(r=>r.json()).catch(()=>[]);
         if (Array.isArray(remote) && remote.length > 0) {
-          const parsed = remote.map(p => {
-            try {
-              const base = typeof p.data==='string' && p.data ? JSON.parse(p.data) : {};
-              return {...base, id:p.id||base.id, name:p.name||base.name, location:p.location||base.location,
-                photo:p.photo||base.photo, formType:p.form_type||p.formType||base.formType,
-                type:p.type||base.type, siteId:p.site_id||base.siteId||''};
-            } catch(e){return p;}
-          });
-          DB.sset('plants', parsed);
-          // Also save with site prefix in case user logs in after
-          const sid = params.get('site') || '';
-          if (sid) localStorage.setItem(sid + ':plants', JSON.stringify(parsed));
-          state.plant = parsed.find(p => p.id === urlPlant) || null;
+          // Save under every possible key so DB.getPlant always finds them
+          localStorage.setItem('plants', JSON.stringify(remote));
+          const sid = params.get('site') || AUTH.getSiteId() || '';
+          if (sid) localStorage.setItem(sid + ':plants', JSON.stringify(remote));
+          const sessionSid = AUTH.getSiteId();
+          if (sessionSid && sessionSid !== sid) localStorage.setItem(sessionSid + ':plants', JSON.stringify(remote));
+          state.plant = remote.find(p => p.id === urlPlant) || null;
+          renderPlantList();
         }
       } catch(e) { console.warn('plant fetch failed', e); }
+
+      // Last resort — build minimal plant from URL params so operator can proceed
+      if (!state.plant) {
+        const pn = params.get('pn');
+        const pf = params.get('form');
+        if (pn) {
+          state.plant = { id: urlPlant, name: decodeURIComponent(pn), location: '', photo: '🏗️', formType: pf || 'GA3' };
+          const plants = DB.sget('plants') || [];
+          if (!plants.find(p => p.id === urlPlant)) { plants.push(state.plant); DB.sset('plants', plants); }
+        }
+      }
     }
 
     if (state.plant) {
@@ -1216,9 +1219,25 @@ function initAfterLogin() {
         document.getElementById('form-step').style.display = '';
         document.getElementById('btn-back-select').style.display = '';
         renderFormOptions();
-        if (urlForm) { selectForm(urlForm); }
+        if (urlForm) {
+          selectForm(urlForm);
+          // selectForm calls showScreen('operator') internally, so we're done
+        } else {
+          showScreen('select');
+        }
       }
+    } else {
+      // Plant still not found — redirect to login which will fetch all data from server
+      const returnUrl = encodeURIComponent(window.location.href);
+      window.location.href = 'login.html?return=' + returnUrl;
+      return;
     }
+  }
+
+  // If no urlPlant param, render the plant list now (was moved from above)
+  if (!urlPlant) {
+    DB.getPlants();
+    renderPlantList();
   }
 
   // Check for and offer to restore autosaved draft
@@ -1256,14 +1275,76 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.addEventListener('online', updateConnStatus);
   window.addEventListener('offline', updateConnStatus);
 
+  // ── FRESH DEVICE QR BOOTSTRAP ───────────────────────────────
+  // If QR URL has ?tok= and ?site=, bootstrap site+plants from server
+  // so operators on brand-new devices never hit a blank screen.
+  const urlSiteParam = params.get('site');
+  const urlTokParam  = params.get('tok');
+
+  if (!AUTH.isLoggedIn() && urlSiteParam && urlTokParam) {
+    let qrPin = null;
+    try {
+      const decoded = atob(urlTokParam);
+      if (decoded.startsWith('op:')) qrPin = decoded.slice(3);
+    } catch {}
+
+    // Fetch site from server if not in localStorage
+    if (!AUTH.getSite(urlSiteParam)) {
+      try {
+        const remoteSites = await fetch(DB._apiBase + '/api/sites').then(r => r.json()).catch(() => []);
+        if (Array.isArray(remoteSites) && remoteSites.length > 0) {
+          remoteSites.forEach(s => AUTH.saveSite({
+            ...s,
+            operatorPin: s.operatorPin || s.operator_pin || s.operatorpin || null
+          }));
+        }
+      } catch(e) { console.warn('site bootstrap failed', e); }
+    }
+
+    // Validate PIN and auto-proceed to name entry
+    if (qrPin && AUTH.isOperatorPin(qrPin, urlSiteParam)) {
+      urlTokPin = qrPin; // store so PIN numpad validates against it
+
+      // Pre-fetch plants so they're ready after login
+      try {
+        const remotePlants = await fetch(DB._apiBase + '/api/plants?site_id=' + urlSiteParam).then(r => r.json()).catch(() => []);
+        if (Array.isArray(remotePlants) && remotePlants.length > 0) {
+          const parsed = remotePlants.map(p => {
+            try {
+              const base = (typeof p.data === 'string' && p.data) ? JSON.parse(p.data) : {};
+              return { ...base, id: p.id || base.id, name: p.name || base.name,
+                       location: p.location || base.location, photo: p.photo || base.photo,
+                       formType: p.form_type || p.formType || base.formType,
+                       type: p.type || base.type, siteId: p.site_id || base.siteId || urlSiteParam };
+            } catch { return p; }
+          });
+          localStorage.setItem(urlSiteParam + ':plants', JSON.stringify(parsed));
+        }
+      } catch(e) { console.warn('plant bootstrap failed', e); }
+
+      // Show login overlay — skip site picker, go straight to name+PIN
+      const overlay = document.getElementById('login-overlay');
+      overlay.style.display = 'flex';
+      loSiteId = urlSiteParam;
+      document.getElementById('lo-step-site').style.display = 'none';
+      document.getElementById('lo-step-pin').style.display = '';
+      const lastName = localStorage.getItem('ga_last_op_name') || '';
+      if (lastName) document.getElementById('lo-name').value = lastName;
+      const siteName = AUTH.getSite(urlSiteParam)?.name || urlSiteParam;
+      document.getElementById('lo-sub').textContent = `Site: ${siteName}`;
+      setTimeout(() => document.getElementById('lo-name')?.focus(), 200);
+      return;
+    }
+  }
+  // ── END FRESH DEVICE BOOTSTRAP ──────────────────────────────
+
   // Handle auth — show inline modal instead of redirecting
   if (!AUTH.isLoggedIn()) {
     const overlay = document.getElementById('login-overlay');
     overlay.style.display = 'flex';
 
-    // Determine site from URL ?site= param, or last used site, or show picker
-    const urlSite = params.get('site');
-    const urlTok = params.get('tok');  // base64 PIN token from QR code
+    const urlSite = urlSiteParam;
+    const urlTok  = urlTokParam;
     const lastSite = AUTH.getLastSiteId();
     const sites = AUTH.getSites().filter(s => s.active !== false);
 
@@ -1279,7 +1360,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       loSiteId = urlSite;
       document.getElementById('lo-step-site').style.display = 'none';
       document.getElementById('lo-step-pin').style.display = '';
-      // Pre-fill last operator name
       const lastName = localStorage.getItem('ga_last_op_name') || '';
       if (lastName) document.getElementById('lo-name').value = lastName;
       const siteName = AUTH.getSite(urlSite)?.name || urlSite;
@@ -1291,10 +1371,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       const lastName = localStorage.getItem('ga_last_op_name') || '';
       if (lastName) document.getElementById('lo-name').value = lastName;
     } else {
+      // Fetch sites from server before showing picker (handles fresh devices with no site=)
+      try {
+        const remoteSites = await fetch(DB._apiBase + '/api/sites').then(r => r.json()).catch(() => []);
+        if (Array.isArray(remoteSites) && remoteSites.length > 0) {
+          remoteSites.forEach(s => AUTH.saveSite({
+            ...s,
+            operatorPin: s.operatorPin || s.operator_pin || s.operatorpin || null
+          }));
+        }
+      } catch(e) {}
       loShowSiteStep();
     }
 
-    // Focus name field
     setTimeout(() => document.getElementById('lo-name')?.focus(), 200);
     return;
   }
