@@ -1,55 +1,51 @@
-# GA Forms System — Robert Quinn Ltd
+# GA Forms System
 
 Plant inspection and safety management system for construction sites.
 
-**Tech:** Pure HTML/CSS/JS · No framework · No server · localStorage
+**Tech:** Pure HTML/CSS/JS · No framework · Node.js/SQLite backend on Hetzner · GitHub Pages frontend
 
 ---
 
-## Files
+## Architecture
 
 ```
-ga-forms-system/
-├── login.html          ← Login page (all users start here)
-├── index.html          ← Dashboard + admin panel (managers/admin)
-├── form.html           ← Inspection forms (operators)
-├── ga1.html            ← Plant registration files (GA1)
-├── lifting.html        ← Lifting equipment register
-├── js/
-│   ├── data.js         ← All data storage, seeds, form templates
-│   ├── auth.js         ← Authentication, users, sites, sessions
-│   ├── ui.js           ← Shared UI components (toast, modal)
-│   └── qr.js           ← QR code generation + print labels
-└── README.md
+Frontend (GitHub Pages):          Backend (Hetzner VPS - 46.225.83.168):
+firulescu.github.io/ga-forms-system/    /opt/ga-forms-api/
+├── login.html      ← Login page          ├── index.js        ← Express API server
+├── index.html      ← Manager dashboard   ├── ga-forms.db     ← SQLite database
+├── form.html       ← Operator forms      └── (pm2: ga-forms-api)
+├── ga1.html        ← Plant registration
+├── lifting.html    ← Lifting register
+├── sw.js           ← Service worker
+└── js/
+    ├── data.js         ← Data layer, localStorage + API sync
+    ├── auth.js         ← Auth, users, sites, sessions
+    ├── ui.js           ← Shared UI components
+    ├── qr.js           ← QR code generation + print labels
+    ├── firebase.js     ← API sync layer (Hetzner server)
+    ├── firebase-config.js ← API URL config
+    ├── api-config.js   ← API base URL
+    └── offline.js      ← Offline queue for failed submissions
 ```
 
 ---
 
-## First-Time Setup (Fresh Install)
+## Server API Endpoints
 
-1. **Upload all files** to your web host or GitHub Pages
-2. Open the site URL — you will see the **First Time Setup** screen
-3. Enter:
-   - Site name (e.g. *Dublin Road Project*)
-   - Site address (e.g. *Dublin, Ireland*)
-   - Your full name
-   - Your 4–6 digit PIN
-4. Click **Create Site & Login →**
-5. You are now logged in as **Admin**
-
----
-
-## Adding More Sites & Users (Admin Panel)
-
-1. Log in as Admin
-2. Go to **⚙️ Admin Panel** in the left nav
-3. **Sites section:**
-   - Click **+ Add Site** to add another site
-   - Click the **👷 button** on any site to set the **Operator PIN** for that site
-4. **Users section:**
-   - Click **+ Add User** to add named staff (managers, supervisors, safety officers)
-   - Fill in name, role, site assignment and PIN
-   - The PIN must be unique — the system will warn you if it's taken
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/sites` | List all sites |
+| POST | `/api/sites` | Create/update site |
+| GET | `/api/plants?site_id=` | List plants (filtered by site) |
+| POST | `/api/plants` | Create/update plant |
+| DELETE | `/api/plants/:id` | Delete plant |
+| GET | `/api/submissions?site_id=` | List submissions |
+| POST | `/api/submissions` | Save submission |
+| GET | `/api/defects?site_id=` | List defects |
+| POST | `/api/defects` | Save defect |
+| GET | `/api/notifications?site_id=` | List notifications |
+| POST | `/api/notifications` | Save notification |
+| GET | `/api/users` | List users |
 
 ---
 
@@ -62,12 +58,10 @@ ga-forms-system/
 4. Enter your personal PIN
 
 **Operators (any worker on site):**
-1. Select site
-2. Click **Operator**
-3. Type your name (no account needed)
-4. Enter the site's shared **Operator PIN** (set by admin)
-
-The last used site is remembered — returning users skip straight to step 2.
+1. Scan QR code on equipment → lands on form.html
+2. Enter your name
+3. Enter the site's shared **Operator PIN** (set by admin)
+4. Fill the inspection form
 
 ---
 
@@ -79,7 +73,7 @@ The last used site is remembered — returning users skip straight to step 2.
 | Project Manager | Everything except settings |
 | Site Manager | Dashboard, plants, forms, compliance, defects |
 | Safety Officer | Submissions, compliance, defects |
-| Operator | Inspection forms only |
+| Operator | Inspection forms only (via QR scan) |
 
 ---
 
@@ -95,70 +89,62 @@ The last used site is remembered — returning users skip straight to step 2.
 | GA2-COMP | Daily | Compressors |
 | GA2-FWORK | Pre-pour | Formwork & falsework |
 | GA2-TELEH | Daily | Telehandlers |
+| GA2-PODIUM | Daily | Podium ladders |
 | GA3 | Weekly | Hazard assessment (all plant) |
 | GA4 | Service | Scheduled maintenance (all plant) |
 | GL1 | Pre-lift | Crane & lifting operations |
 
-Each plant is assigned a `formType` — the system automatically shows only the relevant forms for that plant type.
+---
+
+## QR Code Workflow
+
+1. Admin goes to **QR Codes** page → prints label for a plant
+2. QR is stuck on the machine
+3. Operator scans with phone → `form.html?plant=PLT-001&site=SITE-001&tok=...`
+4. Login modal appears → operator enters name + site PIN
+5. Correct form loads automatically based on plant type
+6. Submission syncs to server in real-time
 
 ---
 
-## QR Codes
-
-1. Go to **QR Codes** in the nav
-2. Print a QR label for any plant
-3. Stick it on the machine
-4. Workers scan with phone → taken directly to the right inspection form
-5. If not logged in, they're sent to login first, then redirected back
-
----
-
-## Resetting / Clearing Data
-
-**Settings → Hard Reset:**
-- Clears ALL site data (plants, submissions, defects, notifications)
-- Requires typing **RESET** to confirm
-- Logs you out
-- Form templates are preserved
-- Use this to start fresh on a new site or for demo purposes
-
----
-
-## Deploying to GitHub Pages
+## Server Management
 
 ```bash
-# 1. Create a new repo on github.com (e.g. ga-forms-system)
-# 2. In your local folder:
-git init
-git add .
-git commit -m "Initial commit — GA Forms System"
-git branch -M main
-git remote add origin https://github.com/YOUR-USERNAME/ga-forms-system.git
-git push -u origin main
+# SSH into server
+ssh root@46.225.83.168
 
-# 3. On GitHub: Settings → Pages → Source: Deploy from branch → main → / (root) → Save
-# 4. Wait ~60 seconds → your URL: https://YOUR-USERNAME.github.io/ga-forms-system/
+# Check server status
+pm2 status
+
+# Restart server
+pm2 restart ga-forms-api
+
+# View logs
+pm2 logs ga-forms-api --lines 50
+
+# Check database
+cd /opt/ga-forms-api && node -e "
+const db = require('better-sqlite3')('./ga-forms.db');
+console.log(db.prepare('SELECT id, name, site_id FROM plants').all());
+"
 ```
 
-**To update after changes:**
+## Deploying Frontend Changes
+
 ```bash
+cd ~/Downloads/ga-forms-system
 git add .
 git commit -m "describe your change"
-git push
+git push origin main
+# Wait ~60 seconds for GitHub Pages to update
 ```
 
 ---
 
 ## Data Storage
 
-All data is stored in the browser's **localStorage** — no server, no database.
+- **Server (SQLite):** plants, sites, submissions, defects, notifications, users
+- **localStorage:** cached copy of server data, scoped per site (`SITE-001:plants`)
+- **sessionStorage:** who's logged in — cleared when tab closes
 
-- Each site's data is prefixed with its site ID (e.g. `SITE-001:plants`)
-- Session (who's logged in) is stored in `sessionStorage` — cleared when tab closes
-- Form templates are shared across all sites (stored without prefix)
-
-**Important:** Data is stored per-browser. If a worker uses a different device or browser, they will not see the same data. For shared data across devices, you would need a backend — contact your developer.
-
----
-
-© 2026 Robert Quinn Ltd — All Rights Reserved
+Data syncs from server to browser on every page load. Offline submissions are queued and synced when connection restores.
